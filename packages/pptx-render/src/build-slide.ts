@@ -13,11 +13,11 @@ import type {
   ChartElement,
   PassthroughElement,
   ArrowEnd,
-} from '@genoffice/pptx-engine'
+} from '@prova/pptx-engine'
 // Subpath import: the renderer bundles this package, so pulling the engine's index
 // (Node-only imports like node:crypto) would break the browser build
-import { tableRowGridCols } from '@genoffice/pptx-engine/table-grid'
-import { isBackgroundLikeElement } from '@genoffice/pptx-engine/background-promote'
+import { tableRowGridCols } from '@prova/pptx-engine/table-grid'
+import { isBackgroundLikeElement } from '@prova/pptx-engine/background-promote'
 import { buildChartNode } from './build-chart'
 import type {
   RenderSlide,

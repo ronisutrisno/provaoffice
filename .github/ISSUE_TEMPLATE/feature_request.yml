@@ -7,11 +7,11 @@ body:
     attributes:
       label: App
       options:
-        - GenOffice Docs (docs)
-        - GenOffice Sheets (sheets)
-        - GenOffice Slides (slides)
-        - GenOffice PDF (pdf)
-        - GenOffice Markdown (markdown)
+        - PROVAOffice Docs (docs)
+        - PROVAOffice Sheets (sheets)
+        - PROVAOffice Slides (slides)
+        - PROVAOffice PDF (pdf)
+        - PROVAOffice Markdown (markdown)
         - Shell / home screen
         - AI panel / providers
         - Whole suite

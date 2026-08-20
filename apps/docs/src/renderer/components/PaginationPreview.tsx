@@ -5,7 +5,7 @@ import type {
   HfPartInfo,
   SectionInfo,
   SectionSettings,
-} from '@genoffice/docx-engine'
+} from '@prova/docx-engine'
 import {
   appendEndnotesBlock,
   appendFloatSpillBlock,

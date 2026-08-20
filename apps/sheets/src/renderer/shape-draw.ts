@@ -6,7 +6,7 @@
  * resolved into a twoCellAnchor by walking real row/column sizes from the
  * viewport's top-left cell.
  */
-import { shapeClipCss } from '@genoffice/ui'
+import { shapeClipCss } from '@prova/ui'
 import type { UniverRuntime } from './univer-state'
 import { EMU_PER_PIXEL, walkMarker, type AnchorMarker } from './WorkbookVisuals'
 import type { WorkbookVisualObject } from '../shared/desktop-api'

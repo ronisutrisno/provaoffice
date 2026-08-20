@@ -1,13 +1,13 @@
 import { createRoot } from 'react-dom/client'
-import { htmlLang, type Lang } from '@genoffice/i18n'
+import { htmlLang, type Lang } from '@prova/i18n'
 import App from './App'
 import { LocaleProvider } from './i18n/locale'
 import type { UiTheme } from '../shared/ipc'
-import '@genoffice/ui/tokens.css'
-import '@genoffice/ui/screentip.css'
-import '@genoffice/ui/color-picker.css'
+import '@prova/ui/tokens.css'
+import '@prova/ui/screentip.css'
+import '@prova/ui/color-picker.css'
 import './styles.css'
-import { installScreenTips } from '@genoffice/ui'
+import { installScreenTips } from '@prova/ui'
 
 installScreenTips()
 

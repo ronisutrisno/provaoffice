@@ -1,4 +1,4 @@
-import { defineStrings } from '@genoffice/i18n'
+import { defineStrings } from '@prova/i18n'
 
 /** User-visible copy for the ai/ panel and tool feedback (LLM prompts are not included here) */
 export const aiStrings = defineStrings({
@@ -19,9 +19,9 @@ export const aiStrings = defineStrings({
     aiQcPageSkipped: '第 {n} 页:截图失败,已跳过',
     aiQcStopped: '版式检查已停止',
     aiQcCapped: '其余 {count} 页未检查(单次上限)',
-    aiGskLoginBtn: '登录 Genspark',
+    aiGskLoginBtn: '登录 PROVA-AI',
     aiUndelivered: '未发送成功',
-    aiPanelTitle: 'Genspark',
+    aiPanelTitle: 'PROVA-AI',
     aiOpenAssistant: '打开 AI 助手',
     aiFactCheckBtn: 'AI 事实核查',
     aiFactCheckPrompt: '核查这份幻灯片的内容:检查数据、日期、名称和论断是否属实,指出并纠正错误',
@@ -71,7 +71,7 @@ export const aiStrings = defineStrings({
     aiErrUnknown: '未知错误',
     aiErrStreamTimeout: 'AI 请求超时：网络长时间无响应，已停止。请检查网络后重试',
     aiErrNetwork: '网络有问题，无法连接 AI 服务。请检查网络后重试',
-    aiCreditsExhausted: 'Genspark 积分已用完，请前往 genspark.ai/pricing 充值后重试',
+    aiCreditsExhausted: 'PROVA-AI 积分已用完，请前往 genspark.ai/pricing 充值后重试',
     aiErrRequestFailed: '请求发送失败: {msg}',
     aiErrGenerateFailed: '生成失败',
     aiErrRegenFailed: '重做页面失败',
@@ -215,9 +215,9 @@ export const aiStrings = defineStrings({
     aiQcPageSkipped: 'Page {n}: screenshot failed, skipped',
     aiQcStopped: 'Layout check stopped',
     aiQcCapped: '{count} more page(s) not checked (per-run cap)',
-    aiGskLoginBtn: 'Sign in to Genspark',
+    aiGskLoginBtn: 'Not required - sign in to PROVA-AI',
     aiUndelivered: 'Not sent',
-    aiPanelTitle: 'Genspark',
+    aiPanelTitle: 'PROVA-AI',
     aiOpenAssistant: 'Open AI assistant',
     aiFactCheckBtn: 'AI Fact Check',
     aiFactCheckPrompt:
@@ -274,7 +274,7 @@ export const aiStrings = defineStrings({
     aiErrNetwork:
       'Network problem: could not reach the AI service. Check your connection and try again',
     aiCreditsExhausted:
-      'Your Genspark credits have run out. Visit genspark.ai/pricing to top up, then try again',
+      'Your PROVA-AI credits have run out. Visit genspark.ai/pricing to top up, then try again',
     aiErrRequestFailed: 'Failed to send request: {msg}',
     aiErrGenerateFailed: 'Generation failed',
     aiErrRegenFailed: 'Slide redo failed',
@@ -418,9 +418,9 @@ export const aiStrings = defineStrings({
     aiQcPageSkipped: 'ページ {n}:スクリーンショット失敗のためスキップ',
     aiQcStopped: 'レイアウトチェックを停止しました',
     aiQcCapped: '残り {count} ページは未チェック(1回の上限)',
-    aiGskLoginBtn: 'Genspark にサインイン',
+    aiGskLoginBtn: 'PROVA-AI にサインイン',
     aiUndelivered: '送信できませんでした',
-    aiPanelTitle: 'Genspark',
+    aiPanelTitle: 'PROVA-AI',
     aiOpenAssistant: 'AI アシスタントを開く',
     aiFactCheckBtn: 'AI ファクトチェック',
     aiFactCheckPrompt:
@@ -476,7 +476,7 @@ export const aiStrings = defineStrings({
     aiErrNetwork:
       'ネットワークに問題があり、AI サービスに接続できません。接続を確認して再試行してください',
     aiCreditsExhausted:
-      'Gensparkクレジットを使い切りました。genspark.ai/pricing でチャージしてから再試行してください',
+      'PROVA-AIクレジットを使い切りました。genspark.ai/pricing でチャージしてから再試行してください',
     aiErrRequestFailed: 'リクエストの送信に失敗しました: {msg}',
     aiErrGenerateFailed: '生成に失敗しました',
     aiErrRegenFailed: 'ページの再生成に失敗しました',
@@ -620,9 +620,9 @@ export const aiStrings = defineStrings({
     aiQcPageSkipped: '{n}페이지: 스크린샷 실패로 건너뜀',
     aiQcStopped: '레이아웃 검사를 중지했습니다',
     aiQcCapped: '나머지 {count}페이지는 검사하지 않음(회당 상한)',
-    aiGskLoginBtn: 'Genspark 로그인',
+    aiGskLoginBtn: 'PROVA-AI 로그인',
     aiUndelivered: '전송되지 않았습니다',
-    aiPanelTitle: 'Genspark',
+    aiPanelTitle: 'PROVA-AI',
     aiOpenAssistant: 'AI 도우미 열기',
     aiFactCheckBtn: 'AI 팩트체크',
     aiFactCheckPrompt:
@@ -679,7 +679,7 @@ export const aiStrings = defineStrings({
     aiErrNetwork:
       '네트워크에 문제가 있어 AI 서비스에 연결할 수 없습니다. 연결을 확인한 후 다시 시도해 주세요',
     aiCreditsExhausted:
-      'Genspark 크레딧을 모두 사용했습니다. genspark.ai/pricing에서 충전한 후 다시 시도해 주세요',
+      'PROVA-AI 크레딧을 모두 사용했습니다. genspark.ai/pricing에서 충전한 후 다시 시도해 주세요',
     aiErrRequestFailed: '요청 전송 실패: {msg}',
     aiErrGenerateFailed: '생성 실패',
     aiErrRegenFailed: '페이지 다시 생성 실패',
@@ -823,9 +823,9 @@ export const aiStrings = defineStrings({
     aiQcPageSkipped: "Page {n} : capture d'écran impossible, ignorée",
     aiQcStopped: 'Vérification de la mise en page arrêtée',
     aiQcCapped: '{count} page(s) restante(s) non vérifiée(s) (limite par exécution)',
-    aiGskLoginBtn: 'Se connecter à Genspark',
+    aiGskLoginBtn: 'Se connecter à PROVA-AI',
     aiUndelivered: 'Non envoyé',
-    aiPanelTitle: 'Genspark',
+    aiPanelTitle: 'PROVA-AI',
     aiOpenAssistant: "Ouvrir l'assistant IA",
     aiFactCheckBtn: 'Vérification IA',
     aiFactCheckPrompt:
@@ -884,7 +884,7 @@ export const aiStrings = defineStrings({
     aiErrNetwork:
       'Problème réseau : impossible de joindre le service IA. Vérifiez votre connexion et réessayez',
     aiCreditsExhausted:
-      'Vos crédits Genspark sont épuisés. Rechargez sur genspark.ai/pricing puis réessayez',
+      'Vos crédits PROVA-AI sont épuisés. Rechargez sur genspark.ai/pricing puis réessayez',
     aiErrRequestFailed: "Échec de l'envoi de la requête : {msg}",
     aiErrGenerateFailed: 'Échec de la génération',
     aiErrRegenFailed: 'Échec de la régénération de la diapositive',
@@ -1029,9 +1029,9 @@ export const aiStrings = defineStrings({
     aiQcPageSkipped: 'Seite {n}: Screenshot fehlgeschlagen, übersprungen',
     aiQcStopped: 'Layoutprüfung gestoppt',
     aiQcCapped: '{count} weitere Seite(n) nicht geprüft (Limit pro Lauf)',
-    aiGskLoginBtn: 'Bei Genspark anmelden',
+    aiGskLoginBtn: 'Bei PROVA-AI anmelden',
     aiUndelivered: 'Nicht gesendet',
-    aiPanelTitle: 'Genspark',
+    aiPanelTitle: 'PROVA-AI',
     aiOpenAssistant: 'KI-Assistenten öffnen',
     aiFactCheckBtn: 'KI-Faktencheck',
     aiFactCheckPrompt:
@@ -1233,9 +1233,9 @@ export const aiStrings = defineStrings({
     aiQcPageSkipped: 'Página {n}: captura de pantalla fallida, omitida',
     aiQcStopped: 'Comprobación de diseño detenida',
     aiQcCapped: '{count} página(s) más sin comprobar (límite por ejecución)',
-    aiGskLoginBtn: 'Iniciar sesión en Genspark',
+    aiGskLoginBtn: 'Iniciar sesión en PROVA-AI',
     aiUndelivered: 'No enviado',
-    aiPanelTitle: 'Genspark',
+    aiPanelTitle: 'PROVA-AI',
     aiOpenAssistant: 'Abrir el asistente de IA',
     aiFactCheckBtn: 'Verificación IA',
     aiFactCheckPrompt:
@@ -1294,7 +1294,7 @@ export const aiStrings = defineStrings({
     aiErrNetwork:
       'Problema de red: no se pudo conectar con el servicio de IA. Comprueba tu conexión e inténtalo de nuevo',
     aiCreditsExhausted:
-      'Tus créditos de Genspark se han agotado. Recarga en genspark.ai/pricing e inténtalo de nuevo',
+      'Tus créditos de PROVA-AI se han agotado. Recarga en genspark.ai/pricing e inténtalo de nuevo',
     aiErrRequestFailed: 'No se pudo enviar la solicitud: {msg}',
     aiErrGenerateFailed: 'Error de generación',
     aiErrRegenFailed: 'No se pudo rehacer la diapositiva',
@@ -1438,9 +1438,9 @@ export const aiStrings = defineStrings({
     aiQcPageSkipped: 'หน้า {n}: จับภาพหน้าจอไม่สำเร็จ ข้ามไป',
     aiQcStopped: 'หยุดการตรวจสอบเลย์เอาต์แล้ว',
     aiQcCapped: 'อีก {count} หน้าไม่ได้ตรวจสอบ (ขีดจำกัดต่อครั้ง)',
-    aiGskLoginBtn: 'ลงชื่อเข้าใช้ Genspark',
+    aiGskLoginBtn: 'ลงชื่อเข้าใช้ PROVA-AI',
     aiUndelivered: 'ส่งไม่สำเร็จ',
-    aiPanelTitle: 'Genspark',
+    aiPanelTitle: 'PROVA-AI',
     aiOpenAssistant: 'เปิดผู้ช่วย AI',
     aiFactCheckBtn: 'ตรวจสอบข้อเท็จจริง AI',
     aiFactCheckPrompt:
@@ -1495,7 +1495,7 @@ export const aiStrings = defineStrings({
     aiErrNetwork:
       'เครือข่ายมีปัญหา ไม่สามารถเชื่อมต่อบริการ AI ได้ โปรดตรวจสอบการเชื่อมต่อแล้วลองใหม่',
     aiCreditsExhausted:
-      'เครดิต Genspark ของคุณหมดแล้ว โปรดเติมเครดิตที่ genspark.ai/pricing แล้วลองใหม่',
+      'เครดิต PROVA-AI ของคุณหมดแล้ว โปรดเติมเครดิตที่ genspark.ai/pricing แล้วลองใหม่',
     aiErrRequestFailed: 'ส่งคำขอไม่สำเร็จ: {msg}',
     aiErrGenerateFailed: 'สร้างไม่สำเร็จ',
     aiErrRegenFailed: 'ทำหน้าใหม่ไม่สำเร็จ',
@@ -1639,9 +1639,9 @@ export const aiStrings = defineStrings({
     aiQcPageSkipped: 'Halaman {n}: tangkapan layar gagal, dilewati',
     aiQcStopped: 'Pemeriksaan tata letak dihentikan',
     aiQcCapped: '{count} halaman lagi tidak diperiksa (batas per proses)',
-    aiGskLoginBtn: 'Masuk ke Genspark',
+    aiGskLoginBtn: 'Masuk ke PROVA-AI',
     aiUndelivered: 'Tidak terkirim',
-    aiPanelTitle: 'Genspark',
+    aiPanelTitle: 'PROVA-AI',
     aiOpenAssistant: 'Buka asisten AI',
     aiFactCheckBtn: 'Cek Fakta AI',
     aiFactCheckPrompt:
@@ -1699,7 +1699,7 @@ export const aiStrings = defineStrings({
     aiErrNetwork:
       'Masalah jaringan: tidak dapat terhubung ke layanan AI. Periksa koneksi Anda lalu coba lagi',
     aiCreditsExhausted:
-      'Kredit Genspark Anda telah habis. Isi ulang di genspark.ai/pricing lalu coba lagi',
+      'Kredit PROVA-AI Anda telah habis. Isi ulang di genspark.ai/pricing lalu coba lagi',
     aiErrRequestFailed: 'Gagal mengirim permintaan: {msg}',
     aiErrGenerateFailed: 'Pembuatan gagal',
     aiErrRegenFailed: 'Gagal membuat ulang halaman',
@@ -1843,9 +1843,9 @@ export const aiStrings = defineStrings({
     aiQcPageSkipped: 'Страница {n}: не удалось сделать снимок, пропущена',
     aiQcStopped: 'Проверка макета остановлена',
     aiQcCapped: 'Ещё {count} стр. не проверено (лимит за один запуск)',
-    aiGskLoginBtn: 'Войти в Genspark',
+    aiGskLoginBtn: 'Войти в PROVA-AI',
     aiUndelivered: 'Не отправлено',
-    aiPanelTitle: 'Genspark',
+    aiPanelTitle: 'PROVA-AI',
     aiOpenAssistant: 'Открыть ИИ-помощника',
     aiFactCheckBtn: 'ИИ-фактчекинг',
     aiFactCheckPrompt:
@@ -1903,7 +1903,7 @@ export const aiStrings = defineStrings({
     aiErrNetwork:
       'Проблема с сетью: не удалось подключиться к сервису ИИ. Проверьте подключение и повторите попытку',
     aiCreditsExhausted:
-      'Кредиты Genspark исчерпаны. Пополните баланс на genspark.ai/pricing и повторите попытку',
+      'Кредиты PROVA-AI исчерпаны. Пополните баланс на genspark.ai/pricing и повторите попытку',
     aiErrRequestFailed: 'Не удалось отправить запрос: {msg}',
     aiErrGenerateFailed: 'Сбой генерации',
     aiErrRegenFailed: 'Не удалось переделать слайд',
@@ -2047,9 +2047,9 @@ export const aiStrings = defineStrings({
     aiQcPageSkipped: 'الصفحة {n}: تعذّر التقاط لقطة الشاشة، تم التخطي',
     aiQcStopped: 'تم إيقاف فحص التخطيط',
     aiQcCapped: '{count} صفحة أخرى لم تُفحص (حد لكل تشغيل)',
-    aiGskLoginBtn: 'تسجيل الدخول إلى Genspark',
+    aiGskLoginBtn: 'تسجيل الدخول إلى PROVA-AI',
     aiUndelivered: 'لم يتم الإرسال',
-    aiPanelTitle: 'Genspark',
+    aiPanelTitle: 'PROVA-AI',
     aiOpenAssistant: 'فتح مساعد الذكاء الاصطناعي',
     aiFactCheckBtn: 'تدقيق حقائق AI',
     aiFactCheckPrompt:
@@ -2104,7 +2104,7 @@ export const aiStrings = defineStrings({
     aiErrNetwork:
       'مشكلة في الشبكة: تعذّر الوصول إلى خدمة الذكاء الاصطناعي. تحقق من الاتصال وحاول مجددًا',
     aiCreditsExhausted:
-      'نفدت أرصدة Genspark لديك. يرجى إعادة الشحن عبر genspark.ai/pricing ثم المحاولة مجددًا',
+      'نفدت أرصدة PROVA-AI لديك. يرجى إعادة الشحن عبر genspark.ai/pricing ثم المحاولة مجددًا',
     aiErrRequestFailed: 'فشل إرسال الطلب: {msg}',
     aiErrGenerateFailed: 'فشل الإنشاء',
     aiErrRegenFailed: 'فشلت إعادة إنشاء الصفحة',
@@ -2248,9 +2248,9 @@ export const aiStrings = defineStrings({
     aiQcPageSkipped: 'Página {n}: captura de tela falhou, ignorada',
     aiQcStopped: 'Verificação de layout interrompida',
     aiQcCapped: 'Mais {count} página(s) não verificada(s) (limite por execução)',
-    aiGskLoginBtn: 'Entrar no Genspark',
+    aiGskLoginBtn: 'Entrar no PROVA-AI',
     aiUndelivered: 'Não enviado',
-    aiPanelTitle: 'Genspark',
+    aiPanelTitle: 'PROVA-AI',
     aiOpenAssistant: 'Abrir assistente de IA',
     aiFactCheckBtn: 'Checagem IA',
     aiFactCheckPrompt:
@@ -2308,7 +2308,7 @@ export const aiStrings = defineStrings({
     aiErrNetwork:
       'Problema de rede: não foi possível conectar ao serviço de IA. Verifique sua conexão e tente novamente',
     aiCreditsExhausted:
-      'Seus créditos Genspark acabaram. Recarregue em genspark.ai/pricing e tente novamente',
+      'Seus créditos PROVA-AI acabaram. Recarregue em genspark.ai/pricing e tente novamente',
     aiErrRequestFailed: 'Falha ao enviar a solicitação: {msg}',
     aiErrGenerateFailed: 'Falha na geração',
     aiErrRegenFailed: 'Falha ao refazer o slide',
@@ -2452,9 +2452,9 @@ export const aiStrings = defineStrings({
     aiQcPageSkipped: 'Pagina {n}: screenshot non riuscito, saltata',
     aiQcStopped: 'Controllo del layout interrotto',
     aiQcCapped: 'Altre {count} pagina/e non controllate (limite per esecuzione)',
-    aiGskLoginBtn: 'Accedi a Genspark',
+    aiGskLoginBtn: 'Accedi a PROVA-AI',
     aiUndelivered: 'Non inviato',
-    aiPanelTitle: 'Genspark',
+    aiPanelTitle: 'PROVA-AI',
     aiOpenAssistant: "Apri l'assistente IA",
     aiFactCheckBtn: 'Fact-check IA',
     aiFactCheckPrompt:
@@ -2512,7 +2512,7 @@ export const aiStrings = defineStrings({
     aiErrNetwork:
       'Problema di rete: impossibile raggiungere il servizio IA. Controlla la connessione e riprova',
     aiCreditsExhausted:
-      'I tuoi crediti Genspark sono esauriti. Ricarica su genspark.ai/pricing e riprova',
+      'I tuoi crediti PROVA-AI sono esauriti. Ricarica su genspark.ai/pricing e riprova',
     aiErrRequestFailed: 'Invio della richiesta non riuscito: {msg}',
     aiErrGenerateFailed: 'Generazione non riuscita',
     aiErrRegenFailed: 'Rigenerazione della diapositiva non riuscita',
@@ -2656,9 +2656,9 @@ export const aiStrings = defineStrings({
     aiQcPageSkipped: 'Strona {n}: zrzut ekranu nie powiódł się, pominięto',
     aiQcStopped: 'Sprawdzanie układu zatrzymane',
     aiQcCapped: 'Pozostałe {count} stron(y) nie sprawdzono (limit na uruchomienie)',
-    aiGskLoginBtn: 'Zaloguj się do Genspark',
+    aiGskLoginBtn: 'Zaloguj się do PROVA-AI',
     aiUndelivered: 'Nie wysłano',
-    aiPanelTitle: 'Genspark',
+    aiPanelTitle: 'PROVA-AI',
     aiOpenAssistant: 'Otwórz asystenta AI',
     aiFactCheckBtn: 'Weryfikacja AI',
     aiFactCheckPrompt:
@@ -2716,7 +2716,7 @@ export const aiStrings = defineStrings({
     aiErrNetwork:
       'Problem z siecią: nie można połączyć się z usługą AI. Sprawdź połączenie i spróbuj ponownie',
     aiCreditsExhausted:
-      'Twoje kredyty Genspark wyczerpały się. Doładuj konto na genspark.ai/pricing i spróbuj ponownie',
+      'Twoje kredyty PROVA-AI wyczerpały się. Doładuj konto na genspark.ai/pricing i spróbuj ponownie',
     aiErrRequestFailed: 'Wysłanie żądania nie powiodło się: {msg}',
     aiErrGenerateFailed: 'Generowanie nie powiodło się',
     aiErrRegenFailed: 'Ponowne wygenerowanie slajdu nie powiodło się',
@@ -2860,9 +2860,9 @@ export const aiStrings = defineStrings({
     aiQcPageSkipped: 'Pagina {n}: schermafbeelding mislukt, overgeslagen',
     aiQcStopped: 'Lay-outcontrole gestopt',
     aiQcCapped: 'Nog {count} pagina(’s) niet gecontroleerd (limiet per run)',
-    aiGskLoginBtn: 'Aanmelden bij Genspark',
+    aiGskLoginBtn: 'Aanmelden bij PROVA-AI',
     aiUndelivered: 'Niet verzonden',
-    aiPanelTitle: 'Genspark',
+    aiPanelTitle: 'PROVA-AI',
     aiOpenAssistant: 'AI-assistent openen',
     aiFactCheckBtn: 'AI-factcheck',
     aiFactCheckPrompt:
@@ -3065,9 +3065,9 @@ export const aiStrings = defineStrings({
     aiQcPageSkipped: 'Halaman {n}: tangkapan skrin gagal, dilangkau',
     aiQcStopped: 'Semakan susun atur dihentikan',
     aiQcCapped: '{count} halaman lagi tidak disemak (had setiap larian)',
-    aiGskLoginBtn: 'Log masuk ke Genspark',
+    aiGskLoginBtn: 'Log masuk ke PROVA-AI',
     aiUndelivered: 'Tidak dihantar',
-    aiPanelTitle: 'Genspark',
+    aiPanelTitle: 'PROVA-AI',
     aiOpenAssistant: 'Buka pembantu AI',
     aiFactCheckBtn: 'Semak Fakta AI',
     aiFactCheckPrompt:
@@ -3125,7 +3125,7 @@ export const aiStrings = defineStrings({
     aiErrNetwork:
       'Masalah rangkaian: tidak dapat menghubungi perkhidmatan AI. Semak sambungan anda dan cuba lagi',
     aiCreditsExhausted:
-      'Kredit Genspark anda telah habis. Tambah nilai di genspark.ai/pricing dan cuba lagi',
+      'Kredit PROVA-AI anda telah habis. Tambah nilai di genspark.ai/pricing dan cuba lagi',
     aiErrRequestFailed: 'Gagal menghantar permintaan: {msg}',
     aiErrGenerateFailed: 'Penjanaan gagal',
     aiErrRegenFailed: 'Gagal membuat semula slaid',
@@ -3269,9 +3269,9 @@ export const aiStrings = defineStrings({
     aiQcPageSkipped: 'עמוד {n}: צילום המסך נכשל, דולג',
     aiQcStopped: 'בדיקת הפריסה הופסקה',
     aiQcCapped: 'עוד {count} עמודים לא נבדקו (מגבלה לכל הרצה)',
-    aiGskLoginBtn: 'התחבר ל-Genspark',
+    aiGskLoginBtn: 'התחבר ל-PROVA-AI',
     aiUndelivered: 'לא נשלח',
-    aiPanelTitle: 'Genspark',
+    aiPanelTitle: 'PROVA-AI',
     aiOpenAssistant: 'פתיחת עוזר ה-AI',
     aiFactCheckBtn: 'בדיקת עובדות AI',
     aiFactCheckPrompt:
@@ -3325,7 +3325,7 @@ export const aiStrings = defineStrings({
     aiErrStreamTimeout:
       'תם הזמן לבקשת ה-AI: אין תגובה מהרשת וההרצה הופסקה. בדוק את החיבור ונסה שוב',
     aiErrNetwork: 'בעיית רשת: לא ניתן להתחבר לשירות ה-AI. בדוק את החיבור ונסה שוב',
-    aiCreditsExhausted: 'קרדיטי Genspark שלך אזלו. טען מחדש ב-genspark.ai/pricing ונסה שוב',
+    aiCreditsExhausted: 'קרדיטי PROVA-AI שלך אזלו. טען מחדש ב-genspark.ai/pricing ונסה שוב',
     aiErrRequestFailed: 'שליחת הבקשה נכשלה: {msg}',
     aiErrGenerateFailed: 'היצירה נכשלה',
     aiErrRegenFailed: 'יצירת השקופית מחדש נכשלה',
@@ -3469,9 +3469,9 @@ export const aiStrings = defineStrings({
     aiQcPageSkipped: 'पेज {n}: स्क्रीनशॉट विफल, छोड़ा गया',
     aiQcStopped: 'लेआउट जाँच रोक दी गई',
     aiQcCapped: 'शेष {count} पेज नहीं जाँचे गए (प्रति रन सीमा)',
-    aiGskLoginBtn: 'Genspark में साइन इन करें',
+    aiGskLoginBtn: 'PROVA-AI में साइन इन करें',
     aiUndelivered: 'भेजा नहीं गया',
-    aiPanelTitle: 'Genspark',
+    aiPanelTitle: 'PROVA-AI',
     aiOpenAssistant: 'AI सहायक खोलें',
     aiFactCheckBtn: 'AI तथ्य जाँच',
     aiFactCheckPrompt:
@@ -3528,7 +3528,7 @@ export const aiStrings = defineStrings({
     aiErrNetwork:
       'नेटवर्क समस्या: AI सेवा से कनेक्ट नहीं हो सका। कनेक्शन जांचें और फिर से प्रयास करें',
     aiCreditsExhausted:
-      'आपके Genspark क्रेडिट समाप्त हो गए हैं। genspark.ai/pricing पर रिचार्ज करें और फिर से प्रयास करें',
+      'आपके PROVA-AI क्रेडिट समाप्त हो गए हैं। genspark.ai/pricing पर रिचार्ज करें और फिर से प्रयास करें',
     aiErrRequestFailed: 'अनुरोध भेजने में विफल: {msg}',
     aiErrGenerateFailed: 'जनरेशन विफल',
     aiErrRegenFailed: 'स्लाइड फिर से बनाने में विफल',
@@ -3672,9 +3672,9 @@ export const aiStrings = defineStrings({
     aiQcPageSkipped: '第 {n} 頁:截圖失敗,已跳過',
     aiQcStopped: '版式檢查已停止',
     aiQcCapped: '其餘 {count} 頁未檢查(單次上限)',
-    aiGskLoginBtn: '登入 Genspark',
+    aiGskLoginBtn: '登入 PROVA-AI',
     aiUndelivered: '未傳送成功',
-    aiPanelTitle: 'Genspark',
+    aiPanelTitle: 'PROVA-AI',
     aiOpenAssistant: '開啟 AI 助手',
     aiFactCheckBtn: 'AI 事實核查',
     aiFactCheckPrompt: '核查這份簡報的內容:檢查數據、日期、名稱和論斷是否屬實,指出並糾正錯誤',
@@ -3724,7 +3724,7 @@ export const aiStrings = defineStrings({
     aiErrUnknown: '未知錯誤',
     aiErrStreamTimeout: 'AI 請求逾時：網路長時間無回應，已停止。請檢查網路後重試',
     aiErrNetwork: '網路有問題，無法連接 AI 服務。請檢查網路後重試',
-    aiCreditsExhausted: 'Genspark 點數已用完，請前往 genspark.ai/pricing 儲值後重試',
+    aiCreditsExhausted: 'PROVA-AI 點數已用完，請前往 genspark.ai/pricing 儲值後重試',
     aiErrRequestFailed: '要求傳送失敗: {msg}',
     aiErrGenerateFailed: '產生失敗',
     aiErrRegenFailed: '重做頁面失敗',

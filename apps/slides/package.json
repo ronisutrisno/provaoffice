@@ -1,6 +1,6 @@
 {
-  "name": "@genoffice/slides",
-  "productName": "GenOffice Slides",
+  "name": "@prova/slides",
+  "productName": "PROVAOffice Slides",
   "version": "0.1.0",
   "license": "Apache-2.0",
   "private": true,
@@ -18,15 +18,15 @@
     "dist:dir": "electron-vite build && electron-builder --dir"
   },
   "devDependencies": {
-    "@genoffice/agent-core": "*",
-    "@genoffice/ai-provider": "*",
-    "@genoffice/ai-search": "*",
-    "@genoffice/file-parse": "*",
-    "@genoffice/i18n": "*",
-    "@genoffice/pptx-engine": "*",
-    "@genoffice/pptx-render": "*",
-    "@genoffice/project-store": "*",
-    "@genoffice/ui": "*",
+    "@prova/agent-core": "*",
+    "@prova/ai-provider": "*",
+    "@prova/ai-search": "*",
+    "@prova/file-parse": "*",
+    "@prova/i18n": "*",
+    "@prova/pptx-engine": "*",
+    "@prova/pptx-render": "*",
+    "@prova/project-store": "*",
+    "@prova/ui": "*",
     "@types/opentype.js": "^1.3.8",
     "@types/pngjs": "^6.0.5",
     "@types/react": "^19.2.14",
@@ -38,6 +38,7 @@
     "jsdom": "^28.0.0",
     "konva": "^9.3.20",
     "opentype.js": "^2.0.0",
+    "pptxgenjs": "^4.0.1",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
     "react-konva": "^19.0.10",
@@ -45,10 +46,10 @@
     "vite": "^7.3.1",
     "vitest": "^4.1.0"
   },
-  "author": "GenOffice",
+  "author": "PROVAOffice",
   "build": {
-    "appId": "com.genoffice.slides",
-    "productName": "GenOffice Slides",
+    "appId": "com.prova.slides",
+    "productName": "PROVAOffice Slides",
     "electronVersion": "43.3.0",
     "directories": {
       "output": "release"
@@ -87,7 +88,7 @@
     }
   },
   "dependencies": {
-    "@genoffice/electron-utils": "*",
+    "@prova/electron-utils": "*",
     "acorn": "^8.18.0",
     "harfbuzzjs": "^1.4.0",
     "pngjs": "^7.0.0",

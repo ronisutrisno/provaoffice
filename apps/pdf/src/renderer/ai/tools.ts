@@ -1,5 +1,5 @@
 import type { PDFDocumentProxy } from 'pdfjs-dist'
-import type { AgentToolCall, AgentToolDef, ToolExecution } from '@genoffice/agent-core'
+import type { AgentToolCall, AgentToolDef, ToolExecution } from '@prova/agent-core'
 import type { OutlineNode } from '../OutlinePanel'
 import type { PageEntry, SearchIndex } from '../search'
 import { searchInIndex } from '../search'
@@ -871,19 +871,28 @@ async function imageSearchTool(
   const query = String(input.query ?? '').trim()
   const summary = t('aiToolImageSearch', { query })
   if (!query) return err('query must not be empty', summary)
-  const r = await deps.searchImages(query, Number(input.max_results) || 8)
-  // a backend failure must not read as an empty gallery — the model would fabricate image choices
-  if (r.method === 'error') {
-    return err(
-      `image search failed (service error, not an empty result — you may retry): ${r.error ?? 'unknown error'}`,
-      summary,
+  const pixabayKey = '55586367-a4b8c80ba306e0b4fb4afca94'
+  const maxResults = Number(input.max_results) || 8
+  try {
+    const url = `https://pixabay.com/api/?key=${encodeURIComponent(pixabayKey)}&q=${encodeURIComponent(query)}&image_type=photo&per_page=${maxResults}&safesearch=true`
+    const resp = await fetch(url)
+    if (!resp.ok) return err(`Pixabay API error: ${resp.status}`, summary)
+    const data = await resp.json()
+    const hits = (data.hits ?? []) as Array<{ webformatURL: string; imageWidth: number; imageHeight: number; tags: string }>
+    const images = hits.map((h) => ({
+      title: h.tags,
+      imageUrl: h.webformatURL,
+      width: h.imageWidth,
+      height: h.imageHeight,
+    }))
+    const lines = images.map(
+      (im, i) =>
+        `${i + 1}. ${im.title || '(untitled)'} [${im.width ?? '?'}x${im.height ?? '?'}]\n   ${im.imageUrl}`,
     )
+    return { output: lines.join('\n') || '(no images found)', summary }
+  } catch (e) {
+    return err(`image search failed: ${e}`, summary)
   }
-  const lines = r.images.map(
-    (im, i) =>
-      `${i + 1}. ${im.title || '(untitled)'} [${im.width ?? '?'}x${im.height ?? '?'}]\n   ${im.imageUrl}`,
-  )
-  return { output: lines.join('\n') || '(no images found)', summary }
 }
 
 async function generateImageTool(

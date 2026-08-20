@@ -1,5 +1,5 @@
-import type { Lang } from '@genoffice/i18n'
-import type { AiSettings, AiStreamChunk, AiStreamRequest } from '@genoffice/ai-provider'
+import type { Lang } from '@prova/i18n'
+import type { AiSettings, AiStreamChunk, AiStreamRequest } from '@prova/ai-provider'
 
 export const MARKDOWN_CHANNELS = {
   consumePending: 'markdown:consume-pending',

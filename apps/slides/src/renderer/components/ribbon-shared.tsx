@@ -15,10 +15,10 @@ import type {
   TransitionKind,
 } from '../../shared/ipc'
 import type { InkPenSettings, InkTool } from '../ink'
-import type { WordArtPreset } from '@genoffice/ui'
+import type { WordArtPreset } from '@prova/ui'
 import type { ChartPresetDef, IconDef, SmartArtDef } from '../insert-presets'
 import type { SlideThemePreset } from '../themes'
-import type { ChartStyleInfo } from '@genoffice/pptx-render'
+import type { ChartStyleInfo } from '@prova/pptx-render'
 import { useI18n, type StringKey } from '../i18n/locale'
 
 export type InsertDropKey =

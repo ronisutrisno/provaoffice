@@ -11,23 +11,23 @@ const requested = new Set<string>()
 declare global {
   interface Window {
     /** Set after each private-font sync completes; the fidelity harness waits on it before screenshots. */
-    __genofficeDocFontsSynced?: boolean
+    __PROVAOfficeDocFontsSynced?: boolean
   }
 }
 
 /** Fetch and register any private faces not yet requested. Safe to call often (idempotent). */
 export async function syncPrivateFonts(): Promise<void> {
-  window.__genofficeDocFontsSynced = false
+  window.__PROVAOfficeDocFontsSynced = false
   let faces: Array<{ id: string; family: string; bold: boolean; italic: boolean }>
   try {
     faces = await window.slidesApi.privateFontFaces()
   } catch {
-    window.__genofficeDocFontsSynced = true
+    window.__PROVAOfficeDocFontsSynced = true
     return
   }
   // Test harnesses stub the bridge with null results
   if (!Array.isArray(faces)) {
-    window.__genofficeDocFontsSynced = true
+    window.__PROVAOfficeDocFontsSynced = true
     return
   }
   await Promise.all(
@@ -50,5 +50,5 @@ export async function syncPrivateFonts(): Promise<void> {
         }
       }),
   )
-  window.__genofficeDocFontsSynced = true
+  window.__PROVAOfficeDocFontsSynced = true
 }

@@ -5,8 +5,8 @@ import {
   IPC_STREAM_SILENCE_TIMEOUT_MS,
   type AgentImage,
   type ToolDisplay,
-} from '@genoffice/agent-core'
-import type { RenderSlide } from '@genoffice/pptx-render'
+} from '@prova/agent-core'
+import type { RenderSlide } from '@prova/pptx-render'
 import type { AiSettings, AttachmentAddResult, AttachmentMeta } from '../../shared/ipc'
 import { ATTACHMENT_IMAGE_EXTS } from '../../shared/ipc'
 import {
@@ -22,8 +22,8 @@ import { createElectronTransport } from './transport'
 import { renderSlidesToPngBase64 } from '../export-render'
 import { isQcEnabled, mergeQcPages, qcSlidePage, QC_MAX_PAGES } from './slide-qc'
 import { useI18n, t as tGlobal, aiLangDirective, type TFunc } from '../i18n/locale'
-import { Markdown } from '@genoffice/ui'
-import { GensparkMark } from '../components/icons'
+import { Markdown } from '@prova/ui'
+import { ProvaMark } from '../components/icons'
 import sendEnterOn from '../assets/send-enter-on.png'
 import sendEnterOff from '../assets/send-enter-off.png'
 import sendStop from '../assets/send-stop.png'
@@ -65,7 +65,7 @@ const PASTE_MIME_EXT: Record<string, string> = {
   'image/webp': 'webp',
 }
 
-/** File-type icons for attachment cards (Genspark attachment icon set); exts the
+/** File-type icons for attachment cards (PROVA-AI attachment icon set); exts the
  *  attachment allowlist doesn't accept yet are mapped ahead so they light up when added */
 const ATTACHMENT_CARD_ICON_GROUPS: [icon: string, exts: string[]][] = [
   [fileWordIcon, ['doc', 'docx']],
@@ -196,6 +196,18 @@ function safeJsonInput(input: unknown): string | undefined {
   }
 }
 
+/** Strip XML tool_call blocks the model echoes into the text stream (they are also delivered
+ * via the structured tool_calls channel, so the raw XML is noise in the chat UI). */
+function stripToolCallXml(text: string): string {
+  if (!text.includes('<tool_call>') && !text.includes('</function>')) return text
+  return text
+    .replace(/<tool_call>[\s\S]*?<\/tool_call>/g, '')
+    .replace(/<function=([^>]*)>[\s\S]*?<\/function>/g, '')
+    .replace(/<parameter=([^>]*)>[\s\S]*?<\/parameter>/g, '')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim()
+}
+
 /** Generation progress snapshot in the chat stream (same card updated in real time) */
 interface DeckProgressSnapshot {
   style?: { label: string; status: 'running' | 'done' | 'error'; summary: string }
@@ -232,7 +244,7 @@ interface ChatEntry {
   streaming?: boolean
   /** the run failed and this user message was rolled back out of the model context */
   undelivered?: boolean
-  /** the run failed because Genspark is signed out — render an inline sign-in button */
+  /** the run failed because PROVA-AI is signed out — render an inline sign-in button */
   loginRequired?: boolean
   tools?: ToolActivity[]
   /** Generation progress card (only one per turn, replaced in real time) */
@@ -373,7 +385,7 @@ export function AiPanel({
   const [copiedIdx, setCopiedIdx] = useState<number | null>(null)
   const [attachments, setAttachments] = useState<AttachmentMeta[]>([])
   const [attachNotice, setAttachNotice] = useState<string | null>(null)
-  /** data-URL previews for image attachments, keyed by path (Genspark composer thumbnails) */
+  /** data-URL previews for image attachments, keyed by path (PROVA-AI composer thumbnails) */
   const [attachmentPreviews, setAttachmentPreviews] = useState<Record<string, string>>({})
   /** image paths with a read already issued — one readAttachmentImage per attach, even while pending */
   const previewRequestedRef = useRef(new Set<string>())
@@ -1159,7 +1171,7 @@ export function AiPanel({
       // Page-by-page deck generation needs more tool rounds
       maxTurns: 24,
       events: {
-        onText: (text) => patchLastAssistant({ text }),
+        onText: (text) => patchLastAssistant({ text: stripToolCallXml(text) }),
         onToolStart: (call) => {
           // Live "running" chip: replaced in place by onToolExecuted
           const activity: ToolActivity = {
@@ -1662,7 +1674,7 @@ export function AiPanel({
         aria-label={t('appAiRailExpand')}
         onClick={onExpand}
       >
-        <GensparkMark size={22} />
+        <ProvaMark size={22} />
       </button>
     )
   }
@@ -1689,11 +1701,11 @@ export function AiPanel({
         onPointerDown={startResize}
         role="separator"
         aria-orientation="vertical"
-        aria-label="Genspark AI"
+        aria-label="PROVA-AI"
       />
       <div className="ai-panel-header">
         <span className="ai-panel-title">
-          <GensparkMark size={22} />
+          <ProvaMark size={22} />
           {t('aiPanelTitle')}
         </span>
         <div className="ai-panel-header-actions">

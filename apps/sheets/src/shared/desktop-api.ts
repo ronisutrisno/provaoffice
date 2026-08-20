@@ -8,7 +8,7 @@ import type {
   AiStreamChunk,
   AiStreamRequest,
   GenSparkAccountStatus,
-} from '@genoffice/ai-provider'
+} from '@prova/ai-provider'
 
 const MAX_RANGE_CELLS = 20_000
 const cellScalarSchema = z.union([z.string(), z.number().finite(), z.boolean(), z.null()])
@@ -1926,7 +1926,7 @@ export type WorkbookCellStyle = z.infer<typeof cellStyleSchema>
 export type WorkbookRichRun = z.infer<typeof richRunSchema>
 export type WorkbookConditionalRule = z.infer<typeof conditionalRuleSchema>
 
-// ---- AI settings + chat/stream: canonical types live in @genoffice/ai-provider,
+// ---- AI settings + chat/stream: canonical types live in @prova/ai-provider,
 // shared with apps/docs. Validated here like every other renderer→main request in
 // this file; the validated shape is cast to AiSettings at the main-process call
 // site, which always has exactly the 5 known provider keys once merged through
@@ -2170,17 +2170,17 @@ export interface DesktopApi {
   /// start a streaming AI call; deltas arrive via onAiStream with the same requestId
   aiStream(request: AiStreamRequest): Promise<void>
   aiStreamCancel(requestId: string): Promise<void>
-  /// Genspark account status (gsk login state); withEmail also returns the email
+  /// PROVA-AI account status (gsk login state); withEmail also returns the email
   /// (needs a network request, slower)
   aiGskStatus(withEmail?: boolean): Promise<GenSparkAccountStatus>
-  /// Opens the browser to sign in to Genspark (fire-and-forget; aiGskStatus
+  /// Opens the browser to sign in to PROVA-AI (fire-and-forget; aiGskStatus
   /// becomes signed-in on completion)
   aiGskLogin(): Promise<void>
   /// Web search (main-process Serper/DuckDuckGo, shared with docs/slides)
   webSearch(query: string, maxResults?: number): Promise<WebSearchResult>
   /// Image search (same shared main-process channel as docs/slides)
   imageSearch(query: string, maxResults?: number): Promise<ImageSearchResponse>
-  /// AI image generation via the Genspark account (sheets-owned channel)
+  /// AI image generation via the PROVA-AI account (sheets-owned channel)
   generateImage(op: { prompt: string; aspectRatio?: string }): Promise<GenerateImageResult>
   /// Downloads an image URL in the main process (SSRF-guarded); null on failure
   fetchImage(url: string): Promise<{ base64: string; mime: string } | null>

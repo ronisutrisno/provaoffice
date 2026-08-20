@@ -1,7 +1,7 @@
 import type { AiProviderId, AiProviderMeta, AiSettings, LegacyAiSettings } from './types'
 
 /**
- * Genspark server-side LLM proxy endpoints. All three protocols share the
+ * PROVA-AI server-side LLM proxy endpoints. All three protocols share the
  * api_key from the gsk login; model ids follow the proxy's own naming scheme,
  * which differs from the official vendor ids.
  */
@@ -12,11 +12,11 @@ export const GENSPARK_LLM_BASE_URLS = {
 } as const
 
 /**
- * Splits GenOffice usage out of the proxy's default "Claw" billing bucket
+ * Splits PROVAOffice usage out of the proxy's default "Claw" billing bucket
  * (the backend attributes gsk-key traffic by X-Agent-Type). Only sent to the
- * Genspark proxy — never to direct vendor APIs.
+ * PROVA-AI proxy — never to direct vendor APIs.
  */
-export const GENSPARK_AGENT_TYPE = 'genoffice'
+export const GENSPARK_AGENT_TYPE = 'PROVAOffice'
 
 export function gensparkAttributionHeaders(baseUrl?: string): Record<string, string> {
   return baseUrl?.startsWith('https://www.genspark.ai')
@@ -27,7 +27,7 @@ export function gensparkAttributionHeaders(baseUrl?: string): Record<string, str
 export const AI_PROVIDERS: AiProviderMeta[] = [
   {
     id: 'genspark',
-    label: 'Genspark',
+    label: 'PROVA-AI',
     models: [
       'claude-opus-4-7',
       'claude-opus-4-8',
@@ -38,7 +38,7 @@ export const AI_PROVIDERS: AiProviderMeta[] = [
       'gemini-3-flash-preview',
     ],
     defaultModel: 'claude-opus-4-7',
-    keyPlaceholder: 'Not required - sign in to Genspark',
+    keyPlaceholder: 'Not required - sign in to PROVA-AI',
   },
   {
     id: 'anthropic',
@@ -85,6 +85,15 @@ export const AI_PROVIDERS: AiProviderMeta[] = [
     keyPlaceholder: 'API Key',
     needsBaseUrl: true,
   },
+  {
+    id: 'prova',
+    label: 'ProxsisLLM',
+    models: ['PROVAOffice'],
+    defaultModel: 'PROVAOffice',
+    keyPlaceholder: 'API Key (License)',
+    defaultBaseUrl: 'https://llm.proxsis.com/api/v1',
+    needsBaseUrl: true,
+  },
 ]
 
 /**
@@ -101,10 +110,10 @@ export function defaultAiSettings(
     providers[meta.id] = {
       apiKey: defaultApiKeys?.[meta.id] ?? '',
       model: meta.defaultModel,
-      baseUrl: meta.needsBaseUrl ? '' : undefined,
+      baseUrl: meta.needsBaseUrl ? ((meta as any).defaultBaseUrl ?? '') : undefined,
     }
   }
-  return { provider: 'genspark', providers }
+  return { provider: 'prova', providers }
 }
 
 /**

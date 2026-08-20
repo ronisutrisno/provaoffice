@@ -57,7 +57,7 @@ import {
   type TableCell,
   type TableModel,
   type TextboxDisplay,
-} from '@genoffice/docx-engine'
+} from '@prova/docx-engine'
 import {
   bulletMarkerScale,
   computeListMarkerInfos,

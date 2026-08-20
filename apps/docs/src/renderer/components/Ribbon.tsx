@@ -28,8 +28,8 @@ import type {
   TextboxDisplay,
   ThemeColors,
   ThemeFonts,
-} from '@genoffice/docx-engine'
-import { ColorPicker, isSymbolFontFamily, useDismissablePopover } from '@genoffice/ui'
+} from '@prova/docx-engine'
+import { ColorPicker, isSymbolFontFamily, useDismissablePopover } from '@prova/ui'
 import { HIGHLIGHT_CSS } from '../editor/extensions'
 import { setParagraphDirection, setSelectionAlign } from '../editor/direction'
 import { stepParagraphIndent } from '../editor/indent'
@@ -57,7 +57,7 @@ import {
 import { WRAP_OPTIONS } from './ContextMenu'
 import { CropDialog, CutoutDialog } from './PictureDialogs'
 import {
-  GensparkMark,
+  ProvaMark,
   IconAlignCenter,
   IconAlignJustify,
   IconAlignLeft,
@@ -2267,7 +2267,7 @@ function RibbonInner({
           </div>
         ) : tab === 'home' ? (
           <>
-            {/* ---- Genspark AI (first slot: entry + one-click AI actions) ---- */}
+            {/* ---- PROVA-AI (first slot: entry + one-click AI actions) ---- */}
             <div className="ribbon-group">
               <div className="ribbon-group-items">
                 <button
@@ -2276,9 +2276,9 @@ function RibbonInner({
                   onClick={onToggleAi}
                 >
                   <span className="rb-big-icon">
-                    <GensparkMark size={26} />
+                    <ProvaMark size={26} />
                   </span>
-                  <span>Genspark AI</span>
+                  <span>PROVA-AI</span>
                 </button>
                 <button
                   className="rb-big ai-entry"
@@ -2372,7 +2372,7 @@ function RibbonInner({
                   <span>{t('aiTidyBtn')}</span>
                 </button>
               </div>
-              <div className="ribbon-group-label">Genspark AI</div>
+              <div className="ribbon-group-label">PROVA-AI</div>
             </div>
 
             <div className="ribbon-sep" />

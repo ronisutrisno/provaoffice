@@ -7,7 +7,7 @@ import {
   genofficeAuthPath,
   genofficeLoginInFlight,
   genofficeLogout,
-  genofficeProxyFallbackPreferred,
+  PROVAOfficeProxyFallbackPreferred,
   loadGenofficeAuth,
   resetGenofficeAuthCache,
   startGenofficeLogin,
@@ -21,7 +21,7 @@ const AUTH_URL = `https://www.genspark.ai/api/office_addin_auth/verify?code=${CO
 let dir: string
 
 beforeEach(() => {
-  dir = mkdtempSync(join(tmpdir(), 'genoffice-auth-'))
+  dir = mkdtempSync(join(tmpdir(), 'GenOffice-auth-'))
   process.env.GENOFFICE_AUTH_DIR = dir
   delete process.env.GSK_API_KEY
   resetGenofficeAuthCache()
@@ -75,7 +75,7 @@ function stubFlow(opts: { pendingPolls?: number; createResponse?: unknown } = {}
       return jsonResponse(
         opts.createResponse ?? {
           status: 0,
-          data: { key_id: 'kid-1', key_name: 'genoffice', token: 'gsk-genoffice-key' },
+          data: { key_id: 'kid-1', key_name: 'PROVAOffice', token: 'gsk-GenOffice-key' },
         },
       )
     }
@@ -105,25 +105,25 @@ describe('startGenofficeLogin', () => {
 
     const saved = JSON.parse(readFileSync(genofficeAuthPath(), 'utf-8'))
     expect(saved).toEqual({
-      api_key: 'gsk-genoffice-key',
+      api_key: 'gsk-GenOffice-key',
       key_id: 'kid-1',
       access_token: 'bearer-token',
     })
     expect(statSync(genofficeAuthPath()).mode & 0o777).toBe(0o600)
-    expect(genofficeApiKey()).toBe('gsk-genoffice-key')
+    expect(genofficeApiKey()).toBe('gsk-GenOffice-key')
     expect(genofficeLoginInFlight()).toBe(false)
 
     // the key create call must ride on the session cookie
     const createCall = fetchMock.mock.calls.find(([u]) => String(u).includes('/api_tokens/create'))!
     const init = createCall[1]!
     expect((init.headers as Record<string, string>).Cookie).toBe('session_id=sess-abc')
-    expect(JSON.parse(String(init.body))).toEqual({ key_name: 'genoffice' })
+    expect(JSON.parse(String(init.body))).toEqual({ key_name: 'PROVAOffice' })
   })
 
   it('feeds gskApiKey(), losing only to an explicit GSK_API_KEY env override', async () => {
     stubFlow()
     await loginAndCollect()
-    expect(gskApiKey()).toBe('gsk-genoffice-key')
+    expect(gskApiKey()).toBe('gsk-GenOffice-key')
     process.env.GSK_API_KEY = 'gsk-env-override'
     expect(gskApiKey()).toBe('gsk-env-override')
   })
@@ -154,8 +154,8 @@ describe('startGenofficeLogin', () => {
     const events = await loginAndCollect()
     expect(deviceCodeCalls).toBe(2)
     expect(events.at(-1)).toEqual({ phase: 'success' })
-    expect(genofficeApiKey()).toBe('gsk-genoffice-key')
-    expect(genofficeProxyFallbackPreferred()).toBe(true)
+    expect(genofficeApiKey()).toBe('gsk-GenOffice-key')
+    expect(PROVAOfficeProxyFallbackPreferred()).toBe(true)
   })
 
   it('treats a gateway status (502) as channel failure: fails over without adopting the channel', async () => {
@@ -166,7 +166,7 @@ describe('startGenofficeLogin', () => {
     expect(events).toEqual([{ phase: 'error', error: 'network' }])
     // both channels tried, neither adopted
     expect(fetchMock).toHaveBeenCalledTimes(2)
-    expect(genofficeProxyFallbackPreferred()).toBe(false)
+    expect(PROVAOfficeProxyFallbackPreferred()).toBe(false)
   })
 
   it('counts an endpoint 4xx (authorization_pending) as channel success', async () => {
@@ -191,7 +191,7 @@ describe('startGenofficeLogin', () => {
     expect(events.at(-1)).toEqual({ phase: 'success' })
     // the 400 poll neither failed over to a second attempt nor dropped the preference
     expect(tokenCalls).toBe(2)
-    expect(genofficeProxyFallbackPreferred()).toBe(true)
+    expect(PROVAOfficeProxyFallbackPreferred()).toBe(true)
   })
 
   it('reports an expired device code as error "expired"', async () => {
@@ -226,10 +226,10 @@ describe('startGenofficeLogin', () => {
     await loginAndCollect()
 
     const fetchMock = stubFlow({
-      createResponse: { status: 0, data: { key_id: 'kid-2', token: 'gsk-genoffice-key-2' } },
+      createResponse: { status: 0, data: { key_id: 'kid-2', token: 'gsk-GenOffice-key-2' } },
     })
     await loginAndCollect()
-    expect(loadGenofficeAuth()).toMatchObject({ apiKey: 'gsk-genoffice-key-2', keyId: 'kid-2' })
+    expect(loadGenofficeAuth()).toMatchObject({ apiKey: 'gsk-GenOffice-key-2', keyId: 'kid-2' })
     await vi.waitFor(() => {
       const revoke = fetchMock.mock.calls.find(([u]) => String(u).includes('/api_tokens/revoke'))
       expect(revoke).toBeDefined()

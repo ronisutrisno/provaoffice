@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { PAGE_MARK, TOTAL_PAGES_MARK, type HeaderFooter } from '@genoffice/docx-engine'
+import { PAGE_MARK, TOTAL_PAGES_MARK, type HeaderFooter } from '@prova/docx-engine'
 import { hfHasPageField, hfWithoutPageMarks, makeGapHfEl } from '../src/renderer/editor/hf-dom'
 import { hfFromPart, restingHfAreaVariant } from '../src/renderer/doc-state'
 

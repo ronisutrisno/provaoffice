@@ -11,7 +11,7 @@
  * - Change bars: vertical segments in the left page margin covering every line
  *   that carries a tracked revision (Word's changed-line marks).
  */
-import type { CommentInfo } from '@genoffice/docx-engine'
+import type { CommentInfo } from '@prova/docx-engine'
 
 export const MARKUP_AREA_W = 200
 const BUBBLE_W = 168

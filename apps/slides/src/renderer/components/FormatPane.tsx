@@ -5,7 +5,7 @@
  * inputs via key.
  */
 import React, { useEffect, useRef, useState } from 'react'
-import type { PictureRenderNode, RenderNode, ShapeRenderNode } from '@genoffice/pptx-render'
+import type { PictureRenderNode, RenderNode, ShapeRenderNode } from '@prova/pptx-render'
 import type { GradientFillSpec, LinkTargetOp } from '../../shared/ipc'
 import { useI18n } from '../i18n/locale'
 import { ColorWell } from './ColorWell'

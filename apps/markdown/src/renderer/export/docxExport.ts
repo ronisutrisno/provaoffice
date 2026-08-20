@@ -6,7 +6,7 @@ import {
   generateTableModelXml,
   parseDocx,
   saveDocx,
-} from '@genoffice/docx-engine'
+} from '@prova/docx-engine'
 import type {
   GeneratedBlock,
   NewImage,
@@ -17,7 +17,7 @@ import type {
   TableCell,
   TableModel,
   TableParagraph,
-} from '@genoffice/docx-engine'
+} from '@prova/docx-engine'
 
 /** Resolve an authored image src to embeddable bytes; null → fall back to alt text */
 export type ImageLoader = (src: string) => Promise<NewImage | null>

@@ -1,17 +1,20 @@
 import React from 'react'
 import { createRoot } from 'react-dom/client'
-import { htmlLang, type Lang } from '@genoffice/i18n'
+import { htmlLang, type Lang } from '@prova/i18n'
 import { App } from './App'
 import { AudienceView } from './components/AudienceView'
 import { LocaleProvider, setModuleLang } from './i18n/locale'
 import type { UiTheme } from '../shared/ipc'
-import '@genoffice/ui/tokens.css'
-import '@genoffice/ui/screentip.css'
-import '@genoffice/ui/color-picker.css'
+import '@prova/ui/tokens.css'
+import '@prova/ui/screentip.css'
+import '@prova/ui/color-picker.css'
 import './styles.css'
-import { installScreenTips } from '@genoffice/ui'
+import { installScreenTips } from '@prova/ui'
 
 installScreenTips()
+
+window.addEventListener('error', (e) => { document.title = 'SLIDES_ERROR: ' + (e.message || String(e)) + ' @ ' + (e.filename || '') + ':' + (e.lineno || '') })
+window.addEventListener('unhandledrejection', (e) => { document.title = 'SLIDES_REJECTION: ' + (e.reason?.message || String(e.reason)) })
 
 // Canvas fillText never triggers @font-face downloads, so the bundled document fonts
 // (Carlito ↔ Calibri) must be loaded explicitly or Konva silently draws the fallback face.

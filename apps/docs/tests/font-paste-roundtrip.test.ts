@@ -81,9 +81,9 @@ describe('fontAttrsFromFamilyChain', () => {
     })
   })
 
-  it('skips internal GenOffice aliases even at the chain head', () => {
+  it('skips internal PROVAOffice aliases even at the chain head', () => {
     expect(
-      fontAttrsFromFamilyChain("'GenOffice Songti SC','STSong','SimSun','Noto Serif CJK SC',serif"),
+      fontAttrsFromFamilyChain("'PROVAOffice Songti SC','STSong','SimSun','Noto Serif CJK SC',serif"),
     ).toEqual({ font: 'STSong' })
   })
 

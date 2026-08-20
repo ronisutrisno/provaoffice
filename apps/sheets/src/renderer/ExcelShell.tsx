@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
-import { platformShortcuts } from '@genoffice/i18n'
-import { SHAPE_GALLERY_GROUPS, ShapePreview, useDismissablePopover } from '@genoffice/ui'
+import { platformShortcuts } from '@prova/i18n'
+import { SHAPE_GALLERY_GROUPS, ShapePreview, useDismissablePopover } from '@prova/ui'
 
 import {
   CaretIcon,
-  GensparkMark,
+  ProvaMark,
   RIBBON_GLYPH_ICONS,
   RedoIcon,
   SaveIcon,
@@ -2350,10 +2350,10 @@ function Ribbon({
           onClick={onAiToggle}
         >
           <span className="tool-icon-row">
-            <GensparkMark size={26} />
+            <ProvaMark size={26} />
           </span>
           <span>
-            <strong>Genspark AI</strong>
+            <strong>PROVA-AI</strong>
           </span>
         </button>
         <button

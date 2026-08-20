@@ -16,8 +16,8 @@ import {
   selectedRect,
   splitCell,
 } from '@tiptap/pm/tables'
-import { platformShortcuts } from '@genoffice/i18n'
-import { isSymbolFontFamily } from '@genoffice/ui'
+import { platformShortcuts } from '@prova/i18n'
+import { isSymbolFontFamily } from '@prova/ui'
 import { useI18n, type StringKey } from '../i18n/locale'
 import { fontFamiliesFor, isEastAsianFontName } from '../font-list'
 import { useSystemFontFamilies } from '../system-fonts'

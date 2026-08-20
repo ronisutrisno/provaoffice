@@ -9,26 +9,26 @@ const here = dirname(fileURLToPath(import.meta.url))
 // avoids bundling stale implementations when node_modules links point elsewhere)
 const workspaceAlias = {
   // Subpath before the bare name: string aliases are prefix replacements
-  '@genoffice/pptx-engine/table-grid': resolve(
+  '@prova/pptx-engine/table-grid': resolve(
     here,
     '../../packages/pptx-engine/src/table-grid.ts',
   ),
-  '@genoffice/pptx-engine/background-promote': resolve(
+  '@prova/pptx-engine/background-promote': resolve(
     here,
     '../../packages/pptx-engine/src/background-promote.ts',
   ),
-  '@genoffice/pptx-engine': resolve(here, '../../packages/pptx-engine/src/index.ts'),
-  '@genoffice/pptx-render/preset-geometry': resolve(
+  '@prova/pptx-engine': resolve(here, '../../packages/pptx-engine/src/index.ts'),
+  '@prova/pptx-render/preset-geometry': resolve(
     here,
     '../../packages/pptx-render/src/preset-geometry.ts',
   ),
-  '@genoffice/pptx-render': resolve(here, '../../packages/pptx-render/src/index.ts'),
+  '@prova/pptx-render': resolve(here, '../../packages/pptx-render/src/index.ts'),
   // Metafile (EMF/WMF) rasterizer shared with the docs engine (renderer-only: needs canvas)
-  '@genoffice/docx-engine/metafile': resolve(here, '../../packages/docx-engine/src/metafile.ts'),
+  '@prova/docx-engine/metafile': resolve(here, '../../packages/docx-engine/src/metafile.ts'),
 }
 
 export default defineConfig({
-  // Main process/preload must bundle @genoffice/* sources (they are pulled in as TS
+  // Main process/preload must bundle @prova/* sources (they are pulled in as TS
   // source with extensionless relative imports; externalizing them under Node
   // yields ERR_MODULE_NOT_FOUND).
   main: {
@@ -37,11 +37,11 @@ export default defineConfig({
     plugins: [
       externalizeDepsPlugin({
         exclude: [
-          '@genoffice/pptx-engine',
-          '@genoffice/pptx-render',
-          '@genoffice/ai-search',
-          '@genoffice/file-parse',
-          '@genoffice/electron-utils',
+          '@prova/pptx-engine',
+          '@prova/pptx-render',
+          '@prova/ai-search',
+          '@prova/file-parse',
+          '@prova/electron-utils',
           'opentype.js',
         ],
       }),

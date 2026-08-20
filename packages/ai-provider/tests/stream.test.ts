@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import type { AgentToolCall } from '@genoffice/agent-core'
+import type { AgentToolCall } from '@prova/agent-core'
 import { AiCreditsError, sseLines, streamForProvider } from '../src/stream'
 import { jsonResponse, okResponse, sseStream } from './test-utils'
 
@@ -305,7 +305,7 @@ describe('streamForProvider: anthropic', () => {
 
   it('never sends an empty assistant content array when history has edits-only replies', async () => {
     // Prior empty terminal turns would map to content:[] and break follow-ups
-    // on Anthropic (genoffice#12 / #22 class of multi-turn failures).
+    // on Anthropic (PROVAOffice#12 / #22 class of multi-turn failures).
     const fetchMock = vi
       .fn()
       .mockResolvedValue(
@@ -343,7 +343,7 @@ describe('streamForProvider: anthropic', () => {
 
   it('replaces an HTML error body (e.g. a gateway block page) with a readable note', async () => {
     const html =
-      '<!doctype html>\n<html>\n<head><title>Genspark</title></head><body>app shell</body></html>'
+      '<!doctype html>\n<html>\n<head><title>PROVA-AI</title></head><body>app shell</body></html>'
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(html, { status: 403 })))
     const { cb } = collector()
     await expect(
@@ -679,7 +679,7 @@ describe('streamForProvider: openai-compatible', () => {
   })
 })
 
-describe('streamForProvider: genspark', () => {
+describe('streamForProvider: PROVA-AI', () => {
   it('routes claude models to the Anthropic-compatible proxy endpoint', async () => {
     const fetchMock = vi.fn().mockResolvedValue(okResponse(sseStream([])))
     vi.stubGlobal('fetch', fetchMock)
@@ -748,7 +748,7 @@ describe('streamForProvider: genspark', () => {
       expect(fetchMock).toHaveBeenCalledWith(
         expect.anything(),
         expect.objectContaining({
-          headers: expect.objectContaining({ 'X-Agent-Type': 'genoffice' }),
+          headers: expect.objectContaining({ 'X-Agent-Type': 'PROVAOffice' }),
         }),
       )
     }
@@ -774,7 +774,7 @@ describe('streamForProvider: genspark', () => {
 
 describe('streamForProvider: 200 + non-stream JSON instead of SSE', () => {
   const creditsNotice =
-    'Your Genspark credits have been exhausted. Please visit https://www.genspark.ai/pricing to purchase more credits.'
+    'Your PROVA-AI credits have been exhausted. Please visit https://www.genspark.ai/pricing to purchase more credits.'
   const json = (value: unknown) =>
     new Response(JSON.stringify(value), {
       status: 200,

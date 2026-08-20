@@ -162,6 +162,13 @@ export async function chatForProvider(
             error: 'A custom provider requires a Base URL',
           })
         return chatOpenAiCompatible(wd, config.baseUrl, config, system, user)
+      case 'prova':
+        if (!config.baseUrl)
+          return Promise.resolve({
+            ok: false as const,
+            error: 'PROVA-AI provider requires a Base URL',
+          })
+        return chatOpenAiCompatible(wd, config.baseUrl, config, system, user)
       default:
         return Promise.resolve({ ok: false as const, error: `Unknown provider: ${provider}` })
     }

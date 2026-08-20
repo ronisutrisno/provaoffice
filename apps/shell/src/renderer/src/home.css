@@ -1,7 +1,7 @@
-/* Shared chrome/AI-panel tokens come from @genoffice/ui/tokens.css (imported
+/* Shared chrome/AI-panel tokens come from @prova/ui/tokens.css (imported
  * before this file in main.tsx); only shell-specific tokens live here. */
 :root {
-  /* Genspark DS v4.1: guide/onboarding accent is the brand blue */
+  /* PROVA-AI DS v4.1: guide/onboarding accent is the brand blue */
   --accent: #0f7fff;
   --accent-hover: #0e72e5;
   --modal-width-sm: 480px;
@@ -13,7 +13,7 @@
   /* lift for the active segment in gray-track tab pills */
   --shadow-pill: 0 1px 2px rgb(0 0 0 / 8%);
 
-  /* genoffice-logo.svg is pure black-and-white; dark themes flip it to 1 */
+  /* provaoffice-logo.svg is pure black-and-white; dark themes flip it to 1 */
   --logo-invert: 0;
 }
 
@@ -119,6 +119,12 @@ body.vib .home {
   filter: invert(var(--logo-invert));
 }
 
+.logo-text {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text);
+}
+
 .sidebar-nav {
   display: flex;
   flex-direction: column;
@@ -168,7 +174,7 @@ body.vib .home {
   font-variant-numeric: tabular-nums;
 }
 
-/* ---- bottom-left account entry (today = Genspark login, later = signup/account system) ---- */
+/* ---- bottom-left account entry (today = PROVA-AI login, later = signup/account system) ---- */
 /* clicking it opens the settings modal (settings.css) directly, which hosts
    login/logout plus preferences (language / theme / save location / update channel) */
 
@@ -494,7 +500,7 @@ body.vib .home {
 
 /* segmented control: gray track, active segment = white card */
 /* segmented filter control: gray track, active segment = white card.
-   One shared 40px rail for the recents page and the Genspark Projects
+   One shared 40px rail for the recents page and the PROVA-AI Projects
    toolbar (where it lines up with the 40px refresh button and search box). */
 .filter-pills,
 .cloud-seg {
@@ -1431,7 +1437,7 @@ body.vib .home {
   padding-top: 1px;
 }
 
-/* ── Cloud (Genspark web) projects ── */
+/* ── Cloud (PROVA-AI web) projects ── */
 
 /* fixed header: the content column never scrolls; only .cloud-scroll does */
 /* whole page scrolls (same as the recents page) so the wheel works anywhere;
@@ -1580,7 +1586,7 @@ body.vib .home {
   margin-top: 0;
 }
 
-/* Genspark Projects list styled like the recent-files table: bordered
+/* PROVA-AI Projects list styled like the recent-files table: bordered
    rounded container, column header, grid rows with hairline dividers */
 .cloud-table {
   border: 1px solid var(--border);

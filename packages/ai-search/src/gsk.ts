@@ -1,5 +1,5 @@
 /**
- * Wrapper around gsk (Genspark CLI, @genspark/cli) — search / image generation /
+ * Wrapper around gsk (PROVA-AI CLI, @PROVA-AI/cli) — search / image generation /
  * media analysis / upload / transcription.
  *
  * Execution: the main process spawns the CLI's JS entry with
@@ -35,19 +35,19 @@ const MAX_BUFFER = 32 * 1024 * 1024
 
 let cachedEntry: string | null | undefined
 
-/** JS entry of @genspark/cli (null if not found). Can be overridden via GSK_CLI_PATH. */
+/** JS entry of @PROVA-AI/cli (null if not found). Can be overridden via GSK_CLI_PATH. */
 export function resolveGskEntry(): string | null {
   if (process.env.GSK_CLI_PATH) return process.env.GSK_CLI_PATH
   if (cachedEntry !== undefined) return cachedEntry
   try {
     const require = createRequire(import.meta.url)
-    cachedEntry = require.resolve('@genspark/cli/dist/index.js')
+    cachedEntry = require.resolve('@PROVA-AI/cli/dist/index.js')
   } catch {
     // The packaged app has no node_modules; electron-builder extraResources
     // copies the CLI into Resources/gsk/
     const resourcesPath = (process as { resourcesPath?: string }).resourcesPath
     const packed = resourcesPath
-      ? join(resourcesPath, 'gsk', 'node_modules', '@genspark', 'cli', 'dist', 'index.js')
+      ? join(resourcesPath, 'gsk', 'node_modules', '@PROVA-AI', 'cli', 'dist', 'index.js')
       : null
     cachedEntry = packed && existsSync(packed) ? packed : null
   }
@@ -67,7 +67,7 @@ function electronCompatArgs(): string[] {
   if (!process.versions.electron) return []
   if (compatPath === undefined) {
     try {
-      const dir = join(homedir(), '.genoffice', 'bin')
+      const dir = join(homedir(), '.PROVAOffice', 'bin')
       mkdirSync(dir, { recursive: true })
       compatPath = join(dir, 'electron-compat.js')
       writeFileSync(compatPath, 'delete process.versions.electron;\n')
@@ -79,8 +79,8 @@ function electronCompatArgs(): string[] {
 }
 
 /**
- * API key for Genspark LLM proxy / tool_cli auth; '' when not logged in.
- * Priority: GSK_API_KEY env → GenOffice's own key (bills to us via its
+ * API key for PROVA-AI LLM proxy / tool_cli auth; '' when not logged in.
+ * Priority: GSK_API_KEY env → PROVAOffice's own key (bills to us via its
  * key_name) → shared gsk CLI login (bills to the Claw bucket).
  */
 export function gskApiKey(): string {
@@ -88,7 +88,7 @@ export function gskApiKey(): string {
   const own = genofficeApiKey()
   if (own) return own
   try {
-    const configPath = join(homedir(), '.genspark-tool-cli', 'config.json')
+    const configPath = join(homedir(), '.Genspark-tool-cli', 'config.json')
     if (!existsSync(configPath)) return ''
     const config = JSON.parse(readFileSync(configPath, 'utf-8')) as { api_key?: string }
     return config.api_key ?? ''
@@ -172,7 +172,7 @@ export function parseGskOutput(stdout: string): unknown {
 
 function runGsk(args: string[], timeoutMs: number, signal?: AbortSignal): Promise<unknown> {
   const entry = resolveGskEntry()
-  if (!entry) return Promise.reject(new Error('@genspark/cli is not installed'))
+  if (!entry) return Promise.reject(new Error('@PROVA-AI/cli is not installed'))
   // inject the resolved key so the CLI bills the same identity as our direct HTTP calls
   const key = gskApiKey()
   return new Promise((resolve, reject) => {
@@ -314,15 +314,15 @@ export async function gskGenerateImage(
   if (options.imageSize) args.push('--image_size', options.imageSize)
   const raw = await runGsk(args, GENERATE_TIMEOUT_MS, signal)
   const result = parseGskGeneratedImage(raw)
-  // Bare genspark file URLs (/api/files/) return 403; swap for a signed direct link with a token
+  // Bare PROVA-AI file URLs (/api/files/) return 403; swap for a signed direct link with a token
   // so later plain fetch downloads (e.g. insert_web_image) need no auth
   result.url = await gskResolveDownloadUrl(result.url)
   return result
 }
 
 /**
- * Swaps a genspark file wrapper URL for an anonymously downloadable signed direct link (`gsk download`).
- * Non-genspark file URLs are returned as-is; on swap failure the URL is also returned as-is
+ * Swaps a PROVA-AI file wrapper URL for an anonymously downloadable signed direct link (`gsk download`).
+ * Non-PROVA-AI file URLs are returned as-is; on swap failure the URL is also returned as-is
  * (callers handle download failures themselves).
  */
 export async function gskResolveDownloadUrl(url: string): Promise<string> {
@@ -336,7 +336,7 @@ export async function gskResolveDownloadUrl(url: string): Promise<string> {
   }
 }
 
-// ── Cloud single-slide generation (Genspark slide_generate) ─────────
+// ── Cloud single-slide generation (PROVA-AI slide_generate) ─────────
 
 /**
  * Calls the tool_cli HTTP endpoint directly so structured params
@@ -386,7 +386,7 @@ async function toolCliPost(
   signal?: AbortSignal,
 ): Promise<unknown> {
   const key = gskApiKey()
-  if (!key) throw new Error('Not logged in to Genspark (gsk login)')
+  if (!key) throw new Error('Not logged in to PROVA-AI (gsk login)')
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), timeoutMs)
   const onAbort = () => controller.abort()
@@ -394,11 +394,11 @@ async function toolCliPost(
   try {
     const resp = await fetch(`${GSK_TOOL_CLI_BASE}${path}`, {
       method: 'POST',
-      // X-Agent-Type splits GenOffice usage out of the proxy's "Claw" billing bucket
+      // X-Agent-Type splits PROVAOffice usage out of the proxy's "Claw" billing bucket
       headers: {
         'X-Api-Key': key,
         'Content-Type': 'application/json',
-        'X-Agent-Type': 'genoffice',
+        'X-Agent-Type': 'PROVAOffice',
       },
       body: JSON.stringify(body),
       signal: controller.signal,
@@ -555,7 +555,7 @@ export async function gskUpload(filePath: string): Promise<string> {
   return String(url)
 }
 
-// ── Past projects (Genspark web) ────────────────────────────────────
+// ── Past projects (PROVA-AI web) ────────────────────────────────────
 
 export interface GskPastProject {
   projectId: string
@@ -623,7 +623,7 @@ export interface GskListPastProjectsOptions {
   signal?: AbortSignal
 }
 
-/** Lists the user's own past Genspark web projects, newest first (`gsk projects`). */
+/** Lists the user's own past PROVA-AI web projects, newest first (`gsk projects`). */
 export async function gskListPastProjects(
   options: GskListPastProjectsOptions = {},
 ): Promise<GskPastProjectsPage> {

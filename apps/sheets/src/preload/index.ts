@@ -5,8 +5,8 @@ import type {
   AiSettings,
   AiStreamChunk,
   GenSparkAccountStatus,
-} from '@genoffice/ai-provider'
-import type { ProjectApi } from '@genoffice/project-store'
+} from '@prova/ai-provider'
+import type { ProjectApi } from '@prova/project-store'
 import type {
   AttachmentAddResult,
   AttachmentImageResult,
@@ -282,7 +282,7 @@ const desktopApi: DesktopApi = {
   async aiGskStatus(withEmail) {
     const result: unknown = await ipcRenderer.invoke(IPC_CHANNELS.aiGskStatus, withEmail)
     if (!isRecord(result) || typeof result.loggedIn !== 'boolean') {
-      throw new Error('Invalid Genspark account status response.')
+      throw new Error('Invalid PROVA-AI account status response.')
     }
     return result as unknown as GenSparkAccountStatus
   },

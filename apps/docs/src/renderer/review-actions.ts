@@ -13,7 +13,7 @@ import {
   type CommentInfo,
   type DocProtection,
   type NoteInfo,
-} from '@genoffice/docx-engine'
+} from '@prova/docx-engine'
 import type { Dispatch, SetStateAction } from 'react'
 import type { DocState } from './doc-state'
 import {

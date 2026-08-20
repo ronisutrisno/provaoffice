@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import type { PointerEvent as ReactPointerEvent, ReactElement, ReactNode } from 'react'
-import { AgentLoop, composeSkills } from '@genoffice/agent-core'
-import type { AiSettings } from '@genoffice/ai-provider'
-import { AiComposer, AiTypingIndicator, Markdown } from '@genoffice/ui'
+import { AgentLoop, composeSkills } from '@prova/agent-core'
+import type { AiSettings } from '@prova/ai-provider'
+import { AiComposer, AiTypingIndicator, Markdown } from '@prova/ui'
 import type { Editor } from '@tiptap/core'
 import { aiLangDirective, t as tGlobal, useI18n } from '../i18n/locale'
 import sendEnterOn from '../assets/send-enter-on.png'
@@ -436,12 +436,12 @@ export function AiPanel({
         onPointerDown={startResize}
         role="separator"
         aria-orientation="vertical"
-        aria-label="Genspark"
+        aria-label="PROVA-AI"
       />
       <header className="ai-panel-header">
         <span className="ai-panel-title">
-          <GensparkMark size={22} />
-          Genspark
+          <ProvaMark size={22} />
+          PROVA-AI
         </span>
         <div className="ai-panel-header-actions">
           {chat.length > 0 && (
@@ -838,8 +838,8 @@ function IconClock(): ReactElement {
   )
 }
 
-/** Genspark brand mark, inline for crisp device-resolution rendering */
-export function GensparkMark({ size = 18 }: { size?: number }): React.JSX.Element {
+/** PROVA-AI brand mark, inline for crisp device-resolution rendering */
+export function ProvaMark({ size = 18 }: { size?: number }): React.JSX.Element {
   return (
     <svg
       width={size}

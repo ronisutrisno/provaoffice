@@ -16,7 +16,7 @@ import type {
   ShapeRenderNode,
   PictureRenderNode,
   GlyphRun,
-} from '@genoffice/pptx-render'
+} from '@prova/pptx-render'
 import { classifyCjkScript } from '../shared/cjk-script'
 
 /**

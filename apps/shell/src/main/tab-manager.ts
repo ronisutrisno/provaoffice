@@ -52,7 +52,7 @@ const HOME_ID = 'home'
  */
 export class TabManager {
   private readonly tabs: TabRecord[] = [
-    { id: HOME_ID, kind: 'home', view: null, title: 'GenOffice' },
+    { id: HOME_ID, kind: 'home', view: null, title: 'PROVAOffice' },
   ]
   private activeId: string = HOME_ID
   private nextId = 1
@@ -76,7 +76,7 @@ export class TabManager {
     // then once more on the next tick. On Linux/X11, `resize` fires before the
     // window manager applies the new size, so getContentBounds() is still the
     // pre-maximize size inside the handler and a follow-up layout is required.
-    // See https://github.com/genspark-ai/genoffice/issues/15
+    // See https://github.com/Genspark-ai/PROVAOffice/issues/15
     shellWindow.on('resize', () => {
       this.layout()
       setImmediate(() => this.layout())
@@ -155,10 +155,15 @@ export class TabManager {
       id,
       kind: 'docs',
       view,
-      title: openPath ? basename(openPath) : this.untitled('docs', 'GenOffice Docs'),
+      title: openPath ? basename(openPath) : this.untitled('docs', 'PROVAOffice Docs'),
       filePath: openPath,
     })
     this.activateTab(id)
+    // Show loading overlay while the view loads
+    this.shellWindow.webContents.send('tab-loading')
+    view.webContents.on('did-finish-load', () => {
+      this.shellWindow.webContents.send('tab-ready')
+    })
     return id
   }
 
@@ -177,12 +182,22 @@ export class TabManager {
       filePath: openPath,
     })
     this.activateTab(id)
+    this.shellWindow.webContents.send('tab-loading')
+    view.webContents.on('did-finish-load', () => {
+      this.shellWindow.webContents.send('tab-ready')
+    })
     return id
   }
 
   openSlidesTab(openPath?: string): string {
     const view = createSlidesView(openPath)
     const id = `t${this.nextId++}`
+    view.webContents.on('crashed', (e, code) => console.error(`[slides] WebContents CRASHED code=${code}`))
+    view.webContents.on('render-process-gone', (e, details) => console.error(`[slides] render-process-gone reason=${details.reason}`))
+    view.webContents.on('did-fail-load', (e, code, desc) => console.error(`[slides] did-fail-load code=${code} desc=${desc}`))
+    view.webContents.on('console-message', (e, level, message, line, sourceId) => {
+      console.log(`[slides:console] ${message} (${sourceId}:${line})`)
+    })
     this.shellWindow.contentView.addChildView(view)
     view.setVisible(false)
     this.trackHtmlFullScreen(id, view)
@@ -194,6 +209,10 @@ export class TabManager {
       filePath: openPath,
     })
     this.activateTab(id)
+    this.shellWindow.webContents.send('tab-loading')
+    view.webContents.on('did-finish-load', () => {
+      this.shellWindow.webContents.send('tab-ready')
+    })
     return id
   }
 
@@ -205,6 +224,10 @@ export class TabManager {
     this.trackHtmlFullScreen(id, view)
     this.tabs.push({ id, kind: 'pdf', view, title: basename(openPath), filePath: openPath })
     this.activateTab(id)
+    this.shellWindow.webContents.send('tab-loading')
+    view.webContents.on('did-finish-load', () => {
+      this.shellWindow.webContents.send('tab-ready')
+    })
     return id
   }
 
@@ -222,6 +245,10 @@ export class TabManager {
       filePath: openPath,
     })
     this.activateTab(id)
+    this.shellWindow.webContents.send('tab-loading')
+    view.webContents.on('did-finish-load', () => {
+      this.shellWindow.webContents.send('tab-ready')
+    })
     return id
   }
 

@@ -11,9 +11,9 @@ import {
   installNavigationGuard,
   safeExternalUrl,
   showOpenDialogWithMemory,
-} from '@genoffice/electron-utils'
-import { createI18n, getUiLang } from '@genoffice/i18n'
-import { gskGenerateImage, hasGskAuth } from '@genoffice/ai-search'
+} from '@prova/electron-utils'
+import { createI18n, getUiLang } from '@prova/i18n'
+import { gskGenerateImage, hasGskAuth } from '@prova/ai-search'
 import { PDF_CHANNELS } from '../shared/ipc'
 import type {
   ExportImagesRequest,
@@ -415,7 +415,7 @@ interface RuntimePaths {
   preloadPath: string
   rendererUrl?: string
   rendererFile?: string
-  /** Shell router used to open generated PDFs in a new GenOffice tab. */
+  /** Shell router used to open generated PDFs in a new PROVAOffice tab. */
   openGeneratedPath?: (path: string) => boolean
 }
 
@@ -1027,7 +1027,7 @@ function registerPdfIpc(): void {
     async (_e, op: { prompt?: unknown; aspectRatio?: unknown }) => {
       if (!hasGskAuth())
         return {
-          error: 'Genspark account is not logged in on this machine; ask the user to log in first',
+          error: 'PROVA-AI account is not logged in on this machine; ask the user to log in first',
         }
       const prompt = String(op?.prompt ?? '').trim()
       if (!prompt) return { error: 'prompt must not be empty' }
@@ -1125,7 +1125,7 @@ export function createPdfView(openPath?: string | null): WebContentsView {
   return view
 }
 
-/** Standalone window mode: `npm run dev -w @genoffice/pdf`, pdf path passed via argv */
+/** Standalone window mode: `npm run dev -w @prova/pdf`, pdf path passed via argv */
 export function startPdfStandalone(): void {
   installNavigationGuard(app)
   installContextMenu(app, () => contextMenuLabels(getUiLang()))

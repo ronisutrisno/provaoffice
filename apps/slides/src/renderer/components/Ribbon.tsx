@@ -12,8 +12,8 @@ import React, {
   type ReactNode,
 } from 'react'
 import type { AnimEffectKind, AnimTrigger, TransitionKind } from '../../shared/ipc'
-import type { ChartStyleInfo } from '@genoffice/pptx-render'
-import { useDismissablePopover } from '@genoffice/ui'
+import type { ChartStyleInfo } from '@prova/pptx-render'
+import { useDismissablePopover } from '@prova/ui'
 import { ICON_COLORS } from '../insert-presets'
 import { THEME_PRESETS, type SlideThemePreset } from '../themes'
 import { restoreEditSelection } from '../TextEditOverlay'

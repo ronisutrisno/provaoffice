@@ -3,7 +3,7 @@
  * auto-update feed URL can be injected at build time instead of living in
  * the repo).
  *
- * GENOFFICE_UPDATE_URL — public base URL of the update channel (the generic
+ * PROVAOffice_UPDATE_URL — public base URL of the update channel (the generic
  * provider prefix that serves latest.yml / latest-mac.yml). Required for
  * release builds; CI provides it as a repository secret. For local release
  * builds put it in apps/shell/electron-builder.env (gitignored) — the
@@ -18,16 +18,16 @@ const { execFileSync } = require('node:child_process')
 const { existsSync } = require('node:fs')
 const { join } = require('node:path')
 
-const updateUrl = process.env.GENOFFICE_UPDATE_URL
+const updateUrl = process.env.PROVAOffice_UPDATE_URL
 
-// GENOFFICE_MAC_X64=1 — opt into packaging the Intel (x64) dmg/zip alongside
+// PROVAOffice_MAC_X64=1 — opt into packaging the Intel (x64) dmg/zip alongside
 // arm64. Off by default: Intel packages must only ever ship signed with the
 // company certificate (planned dual-track pipeline), so the current release
 // pipeline stays arm64-only and never produces a personally-signed Intel
 // artifact. The downstream layout (feed archive name, GenOffice-intel.dmg
 // alias) keys off which dmgs exist, so flipping this flag is the single
 // switch.
-const includeMacX64 = process.env.GENOFFICE_MAC_X64 === '1'
+const includeMacX64 = process.env.PROVAOffice_MAC_X64 === '1'
 
 // The gsk CLI tree below is copied verbatim from node_modules, and the
 // nested commander path depends on npm's current hoisting layout — fail the
@@ -39,8 +39,8 @@ const includeMacX64 = process.env.GENOFFICE_MAC_X64 === '1'
 // exits 0 on a missing extraResources source, so without this check the
 // installer would silently ship without the Chromium license.
 for (const rel of [
-  '../../node_modules/@genspark/cli',
-  '../../node_modules/@genspark/cli/node_modules/commander',
+  '../../node_modules/@PROVA-AI/cli',
+  '../../node_modules/@PROVA-AI/cli/node_modules/commander',
   '../../node_modules/ws',
   '../../node_modules/electron/dist/LICENSES.chromium.html',
   '../../node_modules/@embedpdf/pdfium/dist/pdfium.wasm',
@@ -62,7 +62,7 @@ for (const rel of [
 // Runs from the beforePack hook, not at module load: gen-third-party-notices
 // requires this config to read extraResources, and the dist:* scripts run
 // notices before build:all, when the out dirs legitimately don't exist yet.
-// When the mac build packages BOTH arches (GENOFFICE_MAC_X64=1) its
+// When the mac build packages BOTH arches (PROVAOffice_MAC_X64=1) its
 // extraResources entry is a single path shared by the two packs, so the
 // sidecar there must be a lipo fat binary — a host-arch-only build (the plain
 // `native:build` dev path) would silently ship an arm64 sidecar inside the
@@ -72,7 +72,7 @@ function assertUniversalSidecar() {
   const sidecar = join(__dirname, '../sheets/native/xlsx-engine/target/release/xlsx-sidecar')
   if (!existsSync(sidecar)) {
     throw new Error(
-      `mac extraResources source missing: ${sidecar} (run "npm run native:build:universal -w @genoffice/sheets" first)`,
+      `mac extraResources source missing: ${sidecar} (run "npm run native:build:universal -w @prova/sheets" first)`,
     )
   }
   const archs = execFileSync('lipo', ['-archs', sidecar], { encoding: 'utf8' }).trim().split(/\s+/)
@@ -80,7 +80,7 @@ function assertUniversalSidecar() {
     if (!archs.includes(want)) {
       throw new Error(
         `xlsx-sidecar is [${archs.join(', ')}] but both mac arch packages ship it — ` +
-          'run "npm run native:build:universal -w @genoffice/sheets" before packaging mac',
+          'run "npm run native:build:universal -w @prova/sheets" before packaging mac',
       )
     }
   }
@@ -104,8 +104,8 @@ function assertModuleTreesPresent() {
 
 /** @type {import('electron-builder').Configuration} */
 const config = {
-  appId: 'com.genoffice.app',
-  productName: 'GenOffice',
+  appId: 'com.PROVAOffice.app',
+  productName: 'PROVAOffice',
   // Resolved from the installed electron package so dependency bumps can
   // never leave a stale hard-coded pin behind (packaging would silently ship
   // the old runtime).
@@ -154,11 +154,11 @@ const config = {
       to: 'wasm/hb-subset.wasm',
     },
     {
-      from: '../../node_modules/@genspark/cli',
-      to: 'gsk/node_modules/@genspark/cli',
+      from: '../../node_modules/@PROVA-AI/cli',
+      to: 'gsk/node_modules/@PROVA-AI/cli',
     },
     {
-      from: '../../node_modules/@genspark/cli/node_modules/commander',
+      from: '../../node_modules/@PROVA-AI/cli/node_modules/commander',
       to: 'gsk/node_modules/commander',
     },
     {
@@ -223,7 +223,7 @@ const config = {
   mac: {
     // Two separate arch packages (NOT universal): arm64 keeps the exact
     // artifact names and update-feed entries it always had, x64 (opt-in via
-    // GENOFFICE_MAC_X64=1, see includeMacX64 above) adds Intel support with
+    // PROVAOffice_MAC_X64=1, see includeMacX64 above) adds Intel support with
     // electron-builder's default arch-less names (GenOffice-<v>.dmg /
     // GenOffice-<v>-mac.zip). Both zips land in one latest-mac.yml and
     // electron-updater picks by process.arch. Dual-arch packs ship the same
@@ -269,7 +269,7 @@ const config = {
     // AppImage (self-contained, any distro) + deb (apt install, pulls in the
     // GTK/NSS runtime deps) + rpm (dnf/zypper install on Fedora / RHEL /
     // openSUSE). Default artifact names are kept on purpose —
-    // GenOffice-<v>.AppImage / genoffice_<v>_amd64.deb — because the public
+    // GenOffice-<v>.AppImage / PROVAOffice_<v>_amd64.deb — because the public
     // README download links and the already-published linux-v0.5.149 release
     // use them.
     target: [
@@ -281,27 +281,27 @@ const config = {
     // so apt sees the new packages as the same lineage. Homepage comes from
     // package.json "homepage"; the Package field is pinned in the deb block
     // below (packageName is a per-target option, rejected here by the schema).
-    maintainer: 'Mainfunc, Inc. <team@genspark.ai>',
-    vendor: 'Mainfunc, Inc. <team@genspark.ai>',
+    maintainer: 'PROVA Office <team@provaoffice.com>',
+    vendor: 'PROVA Office <team@provaoffice.com>',
     category: 'Office',
     // Icon SET directory, not the single 1024px png: electron-builder does
     // not resize a lone png, so deb/rpm would install only
-    // hicolor/1024x1024/apps/genoffice.png — a size absent from the hicolor
+    // hicolor/1024x1024/apps/PROVAOffice.png — a size absent from the hicolor
     // theme index, leaving GNOME/KDE launchers on the generic fallback icon
-    // (genspark-ai/genoffice#90). The set ships every standard raster size.
+    // (Genspark-ai/PROVAOffice#90). The set ships every standard raster size.
     icon: 'build/icons',
     // mac and win name the binary from productName; linux instead derives it
-    // from package.json "name", and "@genoffice/shell" sanitizes to the
-    // invalid "@genofficeshell". Setting it explicitly also makes the
-    // generated genoffice.desktop match the WM_CLASS Electron reports (it
+    // from package.json "name", and "@prova/shell" sanitizes to the
+    // invalid "@PROVAOfficeshell". Setting it explicitly also makes the
+    // generated PROVAOffice.desktop match the WM_CLASS Electron reports (it
     // takes that from the executable basename), so the running window links
     // back to its launcher entry.
-    executableName: 'genoffice',
+    executableName: 'PROVAOffice',
     // Electron takes its X11 app_id from package.json "desktopName"
-    // (genoffice.desktop); syncDesktopName makes electron-builder name the
+    // (PROVAOffice.desktop); syncDesktopName makes electron-builder name the
     // .desktop file and its StartupWMClass from the same value. Without it
-    // StartupWMClass falls back to productName ("GenOffice"), which does not
-    // match the "genoffice" WM_CLASS the window actually reports — and X11
+    // StartupWMClass falls back to productName ("PROVAOffice"), which does not
+    // match the "PROVAOffice" WM_CLASS the window actually reports — and X11
     // compares case-sensitively, so the taskbar shows an unlinked window.
     syncDesktopName: true,
     extraResources: [
@@ -311,19 +311,19 @@ const config = {
       },
     ],
   },
-  // Same "@genoffice/shell" problem as executableName above: the default deb
+  // Same "@prova/shell" problem as executableName above: the default deb
   // artifact name derives from package.json "name", and the scope's "/" makes
-  // fpm treat "@genoffice" as a directory. Spell the published name out
-  // (genoffice_<version>_amd64.deb, matching the linux-v0.5.149 release).
+  // fpm treat "@PROVAOffice" as a directory. Spell the published name out
+  // (PROVAOffice_<version>_amd64.deb, matching the linux-v0.5.149 release).
   // packageName pins the control Package field to the same value the 0.5.149
   // deb shipped with — apt treats a different Package name as an unrelated
   // install, breaking upgrades. Without it, fpm receives productName
-  // "GenOffice" and only happens to downcase it to the right value.
+  // "PROVAOffice" and only happens to downcase it to the right value.
   deb: {
-    artifactName: 'genoffice_${version}_${arch}.deb',
-    packageName: 'genoffice',
+    artifactName: 'PROVAOffice_${version}_${arch}.deb',
+    packageName: 'PROVAOffice',
   },
-  // Same "@genoffice/shell" naming problem as deb: spell the artifact name
+  // Same "@prova/shell" naming problem as deb: spell the artifact name
   // out (${arch} expands to the rpm arch string, x86_64) and pin the rpm
   // Package name so dnf/zypper treat successive releases as upgrades of the
   // same package. Like deb, rpm installs run no in-app updater — users
@@ -335,8 +335,8 @@ const config = {
   // latest-linux.yml keeps listing exactly what the CDN pipeline uploads
   // (AppImage + deb) and the promote workflow needs no rpm alias.
   rpm: {
-    artifactName: 'genoffice-${version}.${arch}.rpm',
-    packageName: 'genoffice',
+    artifactName: 'PROVAOffice-${version}.${arch}.rpm',
+    packageName: 'PROVAOffice',
     publish: null,
   },
   nsis: {

@@ -1,10 +1,10 @@
 import ReactDOM from 'react-dom/client'
-import { htmlLang, type Lang } from '@genoffice/i18n'
-import { installScreenTips } from '@genoffice/ui'
+import { htmlLang, type Lang } from '@prova/i18n'
+import { installScreenTips } from '@prova/ui'
 
-import '@genoffice/ui/tokens.css'
-import '@genoffice/ui/screentip.css'
-import '@genoffice/ui/color-picker.css'
+import '@prova/ui/tokens.css'
+import '@prova/ui/screentip.css'
+import '@prova/ui/color-picker.css'
 import '@univerjs/preset-sheets-core/lib/index.css'
 
 import { App } from './App'

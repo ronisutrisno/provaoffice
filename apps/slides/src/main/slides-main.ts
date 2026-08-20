@@ -1,5 +1,5 @@
 /**
- * GenOffice Slides main process — pptx parsing/render-tree building/edit application/saving all live
+ * PROVAOffice Slides main process — pptx parsing/render-tree building/edit application/saving all live
  * here (Node side). The renderer only gets plain-data RenderSlide; edit intents are sent back
  * here to apply. Structure mirrors apps/docs: exports embeddable configure/register/start for
  * future shell reuse.
@@ -22,9 +22,14 @@ import { execFile } from 'node:child_process'
 import { readFile, writeFile, rm, stat, mkdir, open } from 'node:fs/promises'
 import { createHash, randomUUID } from 'node:crypto'
 import { existsSync, mkdirSync } from 'node:fs'
+import {
+  PROVA_JSON_PREFIX,
+  decodeSlideMarker,
+  slideContentToPptxBytes,
+} from './html-to-pptx-local'
 import { userInfo } from 'node:os'
 import { dirname, join } from 'node:path'
-import { gskApiKey, gskSlideGenerate, setGskProxyUrl } from '@genoffice/ai-search'
+import { gskApiKey, gskSlideGenerate, setGskProxyUrl } from '@prova/ai-search'
 import {
   appMenuLabels,
   configuredDefaultSaveDir,
@@ -35,9 +40,9 @@ import {
   showOpenDialogWithMemory,
   showSaveDialogWithMemory,
   toggleDevToolsItem,
-} from '@genoffice/electron-utils'
-import { getUiLang, normalizeLang, setUiLang } from '@genoffice/i18n'
-import { ProjectStore } from '@genoffice/project-store'
+} from '@prova/electron-utils'
+import { getUiLang, normalizeLang, setUiLang } from '@prova/i18n'
+import { ProjectStore } from '@prova/project-store'
 import {
   addChart,
   addElement,
@@ -153,8 +158,8 @@ import {
   type Paragraph,
   type Slide,
   type TextElement,
-} from '@genoffice/pptx-engine'
-import { buildRenderSlide, EMU_PER_PX_96, type RenderSlide } from '@genoffice/pptx-render'
+} from '@prova/pptx-engine'
+import { buildRenderSlide, EMU_PER_PX_96, type RenderSlide } from '@prova/pptx-render'
 import { refineComplexWidths, shapedMetricsReady } from './shaped-metrics'
 import { applyEditParagraphs, collectParagraphFormatPatches, levelsChanged } from './edit-text'
 import { cfbKind, isCfbHeader } from './cfb-sniff'
@@ -476,7 +481,7 @@ const AUTOSAVE_BACKOFF_TICKS = 10
 let autosaveRunning = false
 
 /**
- * Recovery drafts for never-saved decks (wcId → visible path in <Documents>/GenOffice):
+ * Recovery drafts for never-saved decks (wcId → visible path in <Documents>/PROVAOffice):
  * the sha1-keyed recovery copy needs session.path, so before the first save a freeze or
  * crash used to lose everything. Removed on save, explicit discard, or clean close.
  */
@@ -703,7 +708,7 @@ async function openAndBuild(
   }
 }
 
-/** Directory where AI-generated drafts are saved: the configurable default save folder (falls back to <Documents>/GenOffice) */
+/** Directory where AI-generated drafts are saved: the configurable default save folder (falls back to <Documents>/PROVAOffice) */
 function getDraftsDir(): string {
   return configuredDefaultSaveDir(app)
 }
@@ -746,7 +751,7 @@ function pickDraftPath(draftsDir: string, deckName?: string): string {
 }
 
 /**
- * Auto-save the draft to <Documents>/GenOffice/<name>.pptx after AI generation completes.
+ * Auto-save the draft to <Documents>/PROVAOffice/<name>.pptx after AI generation completes.
  * Append mode reuses the session's existing draft path (overwrite); replace mode generates a
  * new filename. On successful write, update session.path, pushRecent, slidesOpenedHook.
  * On write failure, degrade silently (console.warn) without blocking the in-memory session.
@@ -1307,8 +1312,8 @@ export function registerSlidesIpc(): void {
   // ── Cloud single-page generation (gsk slide_generate): brief → cloud HTML+conversion → one-slide
   // pptx saved to a temp file. Returns a marker string that flows through the same pagesHtml slots
   // as locally generated HTML; slides:html-to-pptx recognizes it and reads the bytes instead of
-  // converting. Enabled when gsk is logged in; GENOFFICE_CLOUD_SLIDE=0 is the kill switch.
-  const cloudSlideEnabled = () => process.env.GENOFFICE_CLOUD_SLIDE !== '0' && !!gskApiKey()
+  // converting. Enabled when gsk is logged in; PROVAOffice_CLOUD_SLIDE=0 is the kill switch.
+  const cloudSlideEnabled = () => process.env.PROVAOffice_CLOUD_SLIDE !== '0' && !!gskApiKey()
 
   ipcMain.handle('slides:cloud-gen-status', () => ({ enabled: cloudSlideEnabled() }))
 
@@ -1328,8 +1333,8 @@ export function registerSlidesIpc(): void {
     ): Promise<{ ok: boolean; marker?: string; error?: string }> => {
       if (!cloudSlideEnabled()) return { ok: false, error: 'cloud slide generation is disabled' }
       try {
-        // ultra = opus-class model, matching the local path's quality tier; GENOFFICE_CLOUD_SLIDE_TIER=standard opts down
-        const tier = process.env.GENOFFICE_CLOUD_SLIDE_TIER === 'standard' ? 'standard' : 'ultra'
+        // ultra = opus-class model, matching the local path's quality tier; PROVAOffice_CLOUD_SLIDE_TIER=standard opts down
+        const tier = process.env.PROVAOffice_CLOUD_SLIDE_TIER === 'standard' ? 'standard' : 'ultra'
         const started = Date.now()
         const { bytes, model } = await gskSlideGenerate({
           tier,
@@ -1344,7 +1349,7 @@ export function registerSlidesIpc(): void {
         console.log(
           `[cloud-slide] page generated: tier=${tier} model=${model} bytes=${bytes.length} ms=${Date.now() - started}`,
         )
-        const dir = join(app.getPath('temp'), 'genoffice-cloud-pages')
+        const dir = join(app.getPath('temp'), 'GenOffice-cloud-pages')
         mkdirSync(dir, { recursive: true })
         const path = join(dir, `${randomUUID()}.pptx`)
         await writeFile(path, bytes)
@@ -1382,6 +1387,11 @@ export function registerSlidesIpc(): void {
       // append: merge the "new pages" one by one into the existing deck via mergeSlideFromPptx
       // (earlier pages are untouched).
       const readCloudPage = async (marker: string): Promise<{ bytes: Uint8Array }> => {
+        if (marker.startsWith(PROVA_JSON_PREFIX)) {
+          const slide = decodeSlideMarker(marker)
+          if (!slide) throw new Error('invalid prova-json marker')
+          return { bytes: await slideContentToPptxBytes([slide]) }
+        }
         if (!marker.startsWith(CLOUD_PAGE_PREFIX)) throw new Error('expected a cloud page marker')
         const path = marker.slice(CLOUD_PAGE_PREFIX.length)
         if (!issuedCloudPages.has(path)) throw new Error('unknown cloud page marker')
@@ -2059,7 +2069,7 @@ export function registerSlidesIpc(): void {
     if (!bundle) return false
     slideClipboard = { bundle, ...(pngBase64 ? { png: pngBase64 } : {}) }
     // Marker so plain ⌘V knows the latest copy was a slide (element copies / external copies overwrite it)
-    clipboard.writeBuffer('io.genoffice.slides.slide', Buffer.from('1'))
+    clipboard.writeBuffer('io.PROVAOffice.slides.slide', Buffer.from('1'))
     return true
   })
 
@@ -2693,8 +2703,8 @@ export function registerSlidesIpc(): void {
         return false
       }
     }
-    if (slideClipboard && marker('io.genoffice.slides.slide')) return { kind: 'slide' }
-    if (marker('io.genoffice.slides.elements')) return { kind: 'internal' }
+    if (slideClipboard && marker('io.PROVAOffice.slides.slide')) return { kind: 'slide' }
+    if (marker('io.PROVAOffice.slides.elements')) return { kind: 'internal' }
     const img = clipboard.readImage()
     if (!img.isEmpty()) return { kind: 'image', base64: img.toPNG().toString('base64'), ext: 'png' }
     const text = clipboard.readText()
@@ -2714,7 +2724,7 @@ export function registerSlidesIpc(): void {
     if (items.length) {
       clipboards.set(e.sender.id, { items, pasteCount: 0 })
       // Write our marker to the OS clipboard: an external copy overwrites it, so at paste time it tells whether internal or external is newer
-      clipboard.writeBuffer('io.genoffice.slides.elements', Buffer.from('1'))
+      clipboard.writeBuffer('io.PROVAOffice.slides.elements', Buffer.from('1'))
     }
     return items.length
   })
@@ -3899,7 +3909,7 @@ export function createSlidesWindow(openPath?: string | null): BrowserWindow {
   const win = new BrowserWindow({
     width: 1280,
     height: 840,
-    title: 'GenOffice Slides',
+    title: 'PROVAOffice Slides',
     ...(process.platform === 'darwin'
       ? { titleBarStyle: 'hiddenInset' as const }
       : {
@@ -4103,7 +4113,7 @@ async function applyMainProcessProxy(): Promise<void> {
   try {
     await app.whenReady()
     // PAC/rule proxies answer per-host: probe the host the login flow, the
-    // Genspark LLM proxy and the gsk CLI actually target
+    // PROVA-AI LLM proxy and the gsk CLI actually target
     const resolved = await electronSession.defaultSession.resolveProxy('https://www.genspark.ai/')
     // resolveProxy returns strings like "PROXY 127.0.0.1:1087" or "DIRECT"
     const m = /PROXY\s+([^;]+)/i.exec(resolved || '')
@@ -4126,11 +4136,11 @@ export function startSlidesStandalone(): void {
     app.commandLine.appendSwitch('remote-debugging-port', process.env.SLIDES_CDP_PORT)
     app.commandLine.appendSwitch('remote-allow-origins', '*')
   }
-  // GENOFFICE_USER_DATA: test drivers point this at a scratch dir so automated
+  // PROVAOffice_USER_DATA: test drivers point this at a scratch dir so automated
   // instances get their own userData AND single-instance lock (the lock is scoped
   // to userData), allowing parallel instances alongside a normal dev run.
-  if (!app.isPackaged && process.env.GENOFFICE_USER_DATA) {
-    app.setPath('userData', process.env.GENOFFICE_USER_DATA)
+  if (!app.isPackaged && process.env.PROVAOffice_USER_DATA) {
+    app.setPath('userData', process.env.PROVAOffice_USER_DATA)
   }
   // The main process's Node fetch (undici) does not use the system proxy by default, so access
   // from mainland China to overseas LLM APIs like api.anthropic.com hits ETIMEDOUT on direct
@@ -4162,7 +4172,7 @@ export function startSlidesStandalone(): void {
   if (argPath && existsSync(argPath)) pendingOpenPath = argPath
 
   app.whenReady().then(async () => {
-    setUiLang(normalizeLang(process.env.GENOFFICE_LANG ?? app.getLocale()))
+    setUiLang(normalizeLang(process.env.PROVAOffice_LANG ?? app.getLocale()))
     registerSlidesIpc()
     registerAiIpc()
     registerProjectIpc()

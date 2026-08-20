@@ -1,6 +1,6 @@
 import { readFileSync, unlinkSync, writeFileSync } from 'node:fs'
 import { createHash } from 'node:crypto'
-import { gskApiKey, gskListPastProjects, hasGskAuth } from '@genoffice/ai-search'
+import { gskApiKey, gskListPastProjects, hasGskAuth } from '@prova/ai-search'
 import type { CloudProjectEntry, CloudProjectKind, CloudProjectsSnapshot } from '../shared/home-api'
 
 const SYNC_PAGE = 100
@@ -33,7 +33,7 @@ function ctimeToMs(ctime: string): number {
 export function cloudStoreOwner(): string {
   const key = gskApiKey()
   if (!key) return ''
-  return createHash('sha256').update(`genoffice-cloud-store:${key}`).digest('hex').slice(0, 16)
+  return createHash('sha256').update(`GenOffice-cloud-store:${key}`).digest('hex').slice(0, 16)
 }
 
 /** disk shape: the snapshot plus the owner tag (stripped before it reaches the renderer) */
@@ -154,7 +154,7 @@ async function doSync(storePath: string, owner: string): Promise<CloudProjectsSn
   return snapshot
 }
 
-/** Only relative genspark paths may be opened externally (renderer input is untrusted). */
+/** Only relative PROVA-AI paths may be opened externally (renderer input is untrusted). */
 export function cloudProjectExternalUrl(projectUrl: unknown): string | null {
   if (typeof projectUrl !== 'string') return null
   if (!projectUrl.startsWith('/') || projectUrl.startsWith('//')) return null

@@ -5,7 +5,7 @@ import {
   type HfImage,
   type HfParagraph,
   type Run,
-} from '@genoffice/docx-engine'
+} from '@prova/docx-engine'
 import { useI18n } from '../i18n/locale'
 import { hfTabSegments, hfUsesLegacyHash, paraBorderCss } from '../editor/hf-dom'
 import { cssDualFontFamily, cssFontFamily } from '../line-metrics'

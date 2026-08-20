@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { ReactElement } from 'react'
-import logoLockup from './assets/genoffice-logo.svg'
+import logoLockup from './assets/app-icon.png'
 import iconDocx from './assets/file-docx.svg'
 import iconXlsx from './assets/file-xlsx.svg'
 import iconPptx from './assets/file-pptx.svg'
@@ -15,7 +15,7 @@ import type {
   ProjectSummaryEntry,
   RecentEntry,
 } from '../../shared/home-api'
-import { useDismissablePopover } from '@genoffice/ui'
+import { useDismissablePopover } from '@prova/ui'
 import { fileCountKey, visiblePageCount } from './counts'
 import { useI18n } from './locale'
 import type { I18n, StringKey } from './locale'
@@ -424,237 +424,34 @@ function ProjectPanel({ projects, selectedId, onSelect, onRefresh }: ProjectPane
 }
 
 // ── Account entry (bottom-left) ──────────────────────────
-// Currently the Genspark (gsk) login entry; to be upgraded to a signup/account system later.
-// Clicking it opens the settings modal directly (SettingsModal.tsx), which hosts
-// login/logout plus preferences (language, theme, save location, update channel).
+// AI Provider settings entry. Clicking opens the settings modal.
 
-const LOGIN_POLL_MS = 2500
-/** fallback deadline when the CLI does not report expires_in (device codes live ~300s) */
-const LOGIN_MAX_WAIT_MS = 300_000
-
-function AccountEntry({
-  onStatusChange,
-}: {
-  onStatusChange?: (status: AccountStatus | null) => void
-}) {
-  const { t } = useI18n()
-  const [status, setStatus] = useState<AccountStatus | null>(null)
-
-  useEffect(() => {
-    onStatusChange?.(status)
-  }, [status, onStatusChange])
-  const [waiting, setWaiting] = useState(false)
-  // incremented on login retry, resetting the polling timer
-  const [loginNonce, setLoginNonce] = useState(0)
-  const [loginError, setLoginError] = useState<
-    'timeout' | 'launch' | 'network' | 'expired' | 'failed' | null
-  >(null)
-  // auth URL reported by the login CLI — rescue entry when the browser did not open
-  const [authUrl, setAuthUrl] = useState<string | null>(null)
-  const [urlCopied, setUrlCopied] = useState(false)
-  const loginDeadline = useRef(0)
+function AccountEntry() {
   const [settingsOpen, setSettingsOpen] = useState(false)
-  const [loggingOut, setLoggingOut] = useState(false)
-  // bumped on logout so an in-flight status refresh (which can still
-  // report logged-in) is discarded instead of resurrecting the UI
-  const statusSeq = useRef(0)
-
-  // query login state once on mount
-  useEffect(() => {
-    let alive = true
-    void window.aiOffice.accountStatus?.().then((s) => {
-      if (alive) setStatus(s)
-    })
-    return () => {
-      alive = false
-    }
-  }, [])
-
-  // login progress pushed from main (gsk login CLI output)
-  useEffect(() => {
-    const off = window.aiOffice.onAccountLogin?.((ev) => {
-      if (ev.phase === 'url') {
-        if (ev.url) setAuthUrl(ev.url)
-        if (ev.expiresInSec) loginDeadline.current = Date.now() + ev.expiresInSec * 1000
-      } else if (ev.phase === 'success') {
-        void window.aiOffice.accountStatus().then((s) => {
-          if (s.loggedIn) {
-            setStatus(s)
-            setWaiting(false)
-            setAuthUrl(null)
-          }
-        })
-      } else if (ev.phase === 'error') {
-        setWaiting(false)
-        setAuthUrl(null)
-        setLoginError(
-          ev.error === 'network' ? 'network' : ev.error === 'expired' ? 'expired' : 'failed',
-        )
-      }
-    })
-    return off
-  }, [])
-
-  // config-file polling stays as the fallback success path (works even if progress events are lost)
-  useEffect(() => {
-    if (!waiting) return
-    const timer = setInterval(() => {
-      void window.aiOffice.accountStatus().then((s) => {
-        if (s.loggedIn) {
-          setStatus(s)
-          setWaiting(false)
-          setAuthUrl(null)
-        } else if (Date.now() > loginDeadline.current) {
-          setWaiting(false)
-          setAuthUrl(null)
-          setLoginError('timeout')
-        }
-      })
-    }, LOGIN_POLL_MS)
-    return () => clearInterval(timer)
-  }, [waiting, loginNonce])
-
-  const loggedIn = status?.loggedIn ?? false
-  const email = status?.email ?? ''
-  const initial = email ? email[0].toUpperCase() : loggedIn ? 'G' : '?'
-  const errorText = loginError
-    ? {
-        timeout: t('loginTimeout'),
-        launch: t('loginLaunchFailed'),
-        network: t('loginNetworkError'),
-        expired: t('loginExpired'),
-        failed: t('loginFailed'),
-      }[loginError]
-    : null
-
-  const doLogout = () => {
-    setLoggingOut(true)
-    statusSeq.current++
-    void window.aiOffice.accountLogout().then(() => {
-      setLoggingOut(false)
-      setStatus({ loggedIn: false })
-    })
-  }
-
-  const startLogin = () => {
-    // clicking again while waiting = relaunch the login (main kills the stale CLI, so the new device code is the live one)
-    setLoginError(null)
-    setWaiting(true)
-    setAuthUrl(null)
-    setUrlCopied(false)
-    loginDeadline.current = Date.now() + LOGIN_MAX_WAIT_MS
-    setLoginNonce((n) => n + 1)
-    void window.aiOffice.accountLogin().then((launched) => {
-      if (!launched) {
-        setWaiting(false)
-        setLoginError('launch')
-      }
-    })
-  }
-
-  const openLoginUrl = () => void window.aiOffice.openLoginUrl?.()
-
-  const copyLoginUrl = () => {
-    if (!authUrl) return
-    void navigator.clipboard.writeText(authUrl).then(() => {
-      setUrlCopied(true)
-      window.setTimeout(() => setUrlCopied(false), 2000)
-    })
-  }
-
-  const handleClick = () => {
-    // refresh the login state / credit balance; drop the response
-    // when a logout happened while it was in flight
-    const seq = statusSeq.current
-    void window.aiOffice.accountStatus?.().then((s) => {
-      if (seq === statusSeq.current) setStatus(s)
-    })
-    setSettingsOpen(true)
-  }
 
   return (
     <div className="account-entry">
       {settingsOpen && (
         <SettingsModal
-          status={status}
-          loggingOut={loggingOut}
-          loginWaiting={waiting}
-          loginUrl={authUrl}
-          urlCopied={urlCopied}
-          onOpenLoginUrl={openLoginUrl}
-          onCopyLoginUrl={copyLoginUrl}
           onClose={() => setSettingsOpen(false)}
-          onLogin={() => {
-            setSettingsOpen(false)
-            startLogin()
-          }}
-          onLogout={doLogout}
         />
-      )}
-      {!settingsOpen && waiting && authUrl && (
-        <div className="login-hint" role="status">
-          <button className="login-hint-open" onClick={openLoginUrl}>
-            {t('loginOpenManually')}
-          </button>
-          <button className="login-hint-copy" onClick={copyLoginUrl}>
-            {urlCopied ? t('loginCopied') : t('loginCopyUrl')}
-          </button>
-        </div>
       )}
       <button
         className="account-btn"
-        onClick={handleClick}
+        onClick={() => setSettingsOpen(true)}
         aria-haspopup="dialog"
         aria-expanded={settingsOpen}
-        data-tip={
-          loggedIn
-            ? email || t('loggedInGenspark')
-            : waiting
-              ? t('waitingLogin')
-              : (errorText ?? t('loginGenspark'))
-        }
-        aria-label={t('settings')}
+        data-tip="AI Provider Settings"
+        aria-label="AI Provider Settings"
       >
-        <span
-          className={`account-avatar${loggedIn ? ' logged-in' : ''}${waiting ? ' waiting' : ''}`}
-        >
-          {waiting ? (
-            <svg
-              className="account-spinner"
-              width="14"
-              height="14"
-              viewBox="0 0 16 16"
-              aria-hidden="true"
-            >
-              <circle
-                cx="8"
-                cy="8"
-                r="6"
-                stroke="currentColor"
-                strokeWidth="1.8"
-                fill="none"
-                strokeDasharray="26"
-                strokeDashoffset="18"
-                strokeLinecap="round"
-              />
-            </svg>
-          ) : (
-            initial
-          )}
+        <span className="account-avatar">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+            <circle cx="8" cy="5.2" r="2.9" stroke="currentColor" strokeWidth="1.3" />
+            <path d="M2.7 13.6a5.5 5.5 0 0 1 10.6 0" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+          </svg>
         </span>
         <span className="account-text">
-          <span className="account-name">
-            {loggedIn
-              ? email
-                ? email.split('@')[0]
-                : t('loggedIn')
-              : waiting
-                ? t('waitingShort')
-                : t('login')}
-          </span>
-          {!loggedIn && !waiting && errorText && (
-            <span className="account-sub error">{errorText}</span>
-          )}
+          <span className="account-name">AI Provider Settings</span>
         </span>
         <svg
           className="account-chevron"
@@ -677,7 +474,7 @@ function AccountEntry({
   )
 }
 
-// ── Cloud (Genspark web) projects view ──────────────────
+// ── Cloud (PROVA-AI web) projects view ──────────────────
 
 /** kind filter segments; labels shared with the recents type filter */
 const CLOUD_FILTERS = [
@@ -1004,7 +801,7 @@ export function Home() {
   const [navCounts, setNavCounts] = useState({ recent: 0, starred: 0 })
   const [loadingMore, setLoadingMore] = useState(false)
   const [view, setView] = useState<'recent' | 'starred'>('recent')
-  // Genspark web projects take over the content area (like a selected project)
+  // PROVA-AI web projects take over the content area (like a selected project)
   const [cloudMode, setCloudMode] = useState(false)
   const [filter, setFilter] = useState('all')
   // modified-column sort (WPS-style header popover), shared by the global and project tables
@@ -1019,7 +816,7 @@ export function Home() {
   const [confirmDelete, setConfirmDelete] = useState<string[] | null>(null)
   // name in the greeting; omitted when logged out
   const [accountName, setAccountName] = useState('')
-  // Genspark Projects is web-account data, so its nav entry only shows when logged in
+  // PROVA-AI Projects is web-account data, so its nav entry only shows when logged in
   const [loggedIn, setLoggedIn] = useState(false)
   // single source of account state: AccountEntry reports every change (initial
   // load, login, logout), keeping the greeting name and the nav entry in sync
@@ -1947,7 +1744,8 @@ export function Home() {
     <div className="home">
       <aside className="sidebar">
         <div className="sidebar-logo">
-          <img className="logo-lockup" src={logoLockup} alt="GenOffice" />
+          <img className="logo-lockup" src={logoLockup} alt="PROVAOffice" />
+          <span className="logo-text">PROVAOffice</span>
         </div>
 
         <nav className="sidebar-nav">

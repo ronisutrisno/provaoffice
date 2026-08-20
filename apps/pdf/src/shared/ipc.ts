@@ -1,5 +1,5 @@
-import type { Lang } from '@genoffice/i18n'
-import type { AiSettings, AiStreamChunk, AiStreamRequest } from '@genoffice/ai-provider'
+import type { Lang } from '@prova/i18n'
+import type { AiSettings, AiStreamChunk, AiStreamRequest } from '@prova/ai-provider'
 
 export const PDF_CHANNELS = {
   consumePending: 'pdf:consume-pending',
@@ -40,7 +40,7 @@ export const PDF_CHANNELS = {
   themeChanged: 'app:theme-changed',
 } as const
 
-export const VISUAL_SIGNATURE_CONTENT_PREFIX = 'GenOffice visual signature field: '
+export const VISUAL_SIGNATURE_CONTENT_PREFIX = 'PROVAOffice visual signature field: '
 
 /** Signature strokes: pad pixel coords, scaled proportionally and y-flipped when placed on the page */
 export interface SignatureStrokes {
@@ -154,7 +154,7 @@ export type DrawingInput =
       color: [number, number, number]
       at: [number, number]
       contents: string
-      /** Annotation author (/T); omitted → 'GenOffice' */
+      /** Annotation author (/T); omitted → 'PROVAOffice' */
       author?: string
       /** Creation time (ms since epoch) → /CreationDate and /M; omitted → save time */
       createdMs?: number
@@ -369,7 +369,7 @@ export interface PageImageRef {
   aboveText: boolean
 }
 
-/** Editable metadata for a GenOffice static form fill embedded as a page image. */
+/** Editable metadata for a PROVAOffice static form fill embedded as a page image. */
 export interface StaticFormFillRecord {
   id: string
   kind: 'text' | 'check' | 'cross'
@@ -476,7 +476,7 @@ export interface ValidateTextEditsRequest {
   edits: TextEditInput[]
 }
 
-/** Extract pages into a new PDF written to the GenOffice save dir and opened in a new tab */
+/** Extract pages into a new PDF written to the PROVAOffice save dir and opened in a new tab */
 export interface ExtractPagesRequest {
   path: string
   /** Original page indices */
@@ -566,7 +566,7 @@ export interface SetPageSizeRequest {
 export type SetPageSizeResult = { ok: true } | { ok: false; error: string }
 
 /** Split every page into a grid of pages (inverse of merge pages), written to the
- * GenOffice save dir and opened in a new tab */
+ * PROVAOffice save dir and opened in a new tab */
 export interface SplitPagesRequest {
   path: string
   perPage: 2 | 4 | 9
@@ -638,7 +638,7 @@ export interface PdfApi {
   listEditFonts(): Promise<string[]>
   /** Enumerate the content-stream images of every page (for image edit mode) */
   listPageImages(path: string): Promise<PageImageRef[]>
-  /** Read GenOffice static-fill metadata stored inside the PDF. */
+  /** Read PROVAOffice static-fill metadata stored inside the PDF. */
   listStaticFormFills(path: string): Promise<StaticFormFillRecord[]>
   /** Render one existing image object to PNG (base64) for move/resize ghost previews; null if it can't be matched */
   pageImagePng(request: {
@@ -667,7 +667,7 @@ export interface PdfApi {
   imageSearch(query: string, maxResults?: number): Promise<ImageSearchResponse>
   /** Download an image URL in the main process (SSRF-guarded, avoids CORS); null on failure */
   fetchImage(url: string): Promise<{ base64: string; mime: string } | null>
-  /** AI image generation via Genspark (gsk); returns a downloadable URL or an error message */
+  /** AI image generation via PROVA-AI (gsk); returns a downloadable URL or an error message */
   generateImage(op: { prompt: string; aspectRatio?: string }): Promise<{
     url?: string
     error?: string

@@ -23,7 +23,7 @@
  *   - space-before/space-after keep their face value (Word does not grid-snap them)
  */
 
-import type { DocGrid } from '@genoffice/docx-engine'
+import type { DocGrid } from '@prova/docx-engine'
 
 // ─── Font metrics interface (same interface as pptx-render/metrics.ts) ─────
 
@@ -118,7 +118,7 @@ export class HeuristicMetrics implements FontMetricsProvider {
 
 /** Korean font names (Windows/Noto/Source Han/Nanum faces + bundled subsets) */
 const KO_FONT_RE =
-  /malgun|맑은|batang|바탕|myeongjo|myungjo|명조|gungsuh|궁서|gulim|굴림|dotum|돋움|nanum|나눔|genoffice (sans|serif) kr|(noto|source han) (sans|serif)[^,]*\bk(r|orean)?\b/i
+  /malgun|맑은|batang|바탕|myeongjo|myungjo|명조|gungsuh|궁서|gulim|굴림|dotum|돋움|nanum|나눔|PROVAOffice (sans|serif) kr|(noto|source han) (sans|serif)[^,]*\bk(r|orean)?\b/i
 
 /**
  * Per-font single-spacing line-height factor. Re-baselined against Word for
@@ -365,10 +365,10 @@ export function computeLineHeight(
 export const BUNDLED_FONTS = new Set([
   'Noto Sans CJK SC',
   'Noto Serif CJK SC',
-  'GenOffice Sans KR',
-  'GenOffice Serif KR',
-  'GenOffice Fullwidth TC',
-  'GenOffice Songti SC',
+  'PROVAOffice Sans KR',
+  'PROVAOffice Serif KR',
+  'PROVAOffice Fullwidth TC',
+  'PROVAOffice Songti SC',
   'Carlito GO',
   'Caladea',
   'Liberation Serif',
@@ -414,9 +414,9 @@ export function cssFontFamily(font: string): string {
   // CJK fallback at chain end (GB2312 subset bundled in fonts.css): no tofu even without system Chinese fonts
   const CJK_SERIF = 'Noto Serif CJK SC'
   const CJK_SANS = 'Noto Sans CJK SC'
-  // 'GenOffice Box Drawing' (fonts.css): U+2500 rules would otherwise fall to
+  // 'PROVAOffice Box Drawing' (fonts.css): U+2500 rules would otherwise fall to
   // the fullwidth CJK subset and overflow the column
-  const BOX = 'GenOffice Box Drawing'
+  const BOX = 'PROVAOffice Box Drawing'
   if (f.includes('calibri')) return `${chain(font, 'Carlito GO', CJK_SANS)},sans-serif`
   // math faces would fall to the unknown-name sans fallback; STIX Two Math ships with macOS,
   // and on Windows the declared name resolves natively
@@ -436,11 +436,11 @@ export function cssFontFamily(font: string): string {
     f.includes('zhongsong')
   )
     return `${chain(font, 'STZhongsong', 'Songti SC', 'STSong', 'SimSun', CJK_SERIF)},serif`
-  // 'GenOffice Songti SC' (fonts.css local() alias of Songti SC): macOS Chromium
+  // 'PROVAOffice Songti SC' (fonts.css local() alias of Songti SC): macOS Chromium
   // refuses synthetic bold for 'Songti SC' by name at weight 600/700; the alias,
   // registered weight-normal only, lets Blink synthesize. Unresolvable elsewhere.
   if (f.includes('simsun') || f.includes('宋体') || f.includes('nsimsun')) {
-    return `${chain(font, 'GenOffice Songti SC', 'STSong', 'SimSun', CJK_SERIF)},serif`
+    return `${chain(font, 'PROVAOffice Songti SC', 'STSong', 'SimSun', CJK_SERIF)},serif`
   }
   if (f.includes('simhei') || f.includes('黑体') || f.includes('细黑') || f.includes('xihei'))
     return `${chain(font, 'Heiti SC', 'STHeiti', 'SimHei', 'PingFang SC', CJK_SANS)},sans-serif`
@@ -455,22 +455,22 @@ export function cssFontFamily(font: string): string {
   if (f.includes('隶书') || f.includes('lisu'))
     return `${chain(font, 'Baoli SC', 'LiSu', CJK_SERIF)},serif`
   // Japanese/Korean/Traditional Chinese: fall back within the same script (win/mac family names as mutual backups) so Han glyphs don't render with Simplified forms.
-  // 'GenOffice *' entries are CJK-only local() aliases (fonts.css): the underlying
+  // 'PROVAOffice *' entries are CJK-only local() aliases (fonts.css): the underlying
   // system faces draw Cyrillic/Greek fullwidth, so those scripts must pass through
-  const JA_SANS = ['Yu Gothic', 'GenOffice Hiragino Sans', 'Meiryo', 'Noto Sans JP']
+  const JA_SANS = ['Yu Gothic', 'PROVAOffice Hiragino Sans', 'Meiryo', 'Noto Sans JP']
   const JA_SERIF = [
     'Yu Mincho',
-    'GenOffice Hiragino Mincho',
-    'GenOffice MS Mincho',
+    'PROVAOffice Hiragino Mincho',
+    'PROVAOffice MS Mincho',
     'Noto Serif JP',
   ]
-  const KO_SANS = ['Malgun Gothic', 'GenOffice Sans KR', 'Apple SD Gothic Neo', 'Noto Sans KR']
-  const KO_SERIF = ['GenOffice Batang', 'GenOffice Serif KR', 'GenOffice Myungjo', 'Noto Serif KR']
-  const TC_SANS = ['Microsoft JhengHei', 'PingFang TC', 'GenOffice Heiti TC', 'Noto Sans TC']
-  // 'GenOffice Fullwidth TC' (fonts.css): fullwidth U+FF0D/FF0F/FF3C/FF3F/FF5E whose Songti TC glyphs look half-width
-  const TC_SERIF = ['GenOffice MingLiU', 'GenOffice Fullwidth TC', 'Songti TC', 'Noto Serif TC']
+  const KO_SANS = ['Malgun Gothic', 'PROVAOffice Sans KR', 'Apple SD Gothic Neo', 'Noto Sans KR']
+  const KO_SERIF = ['PROVAOffice Batang', 'PROVAOffice Serif KR', 'PROVAOffice Myungjo', 'Noto Serif KR']
+  const TC_SANS = ['Microsoft JhengHei', 'PingFang TC', 'PROVAOffice Heiti TC', 'Noto Sans TC']
+  // 'PROVAOffice Fullwidth TC' (fonts.css): fullwidth U+FF0D/FF0F/FF3C/FF3F/FF5E whose Songti TC glyphs look half-width
+  const TC_SERIF = ['PROVAOffice MingLiU', 'PROVAOffice Fullwidth TC', 'Songti TC', 'Noto Serif TC']
   const SC_SANS = ['PingFang SC', 'Microsoft YaHei', CJK_SANS]
-  const SC_SERIF = ['GenOffice Songti SC', 'STSong', 'SimSun', CJK_SERIF]
+  const SC_SERIF = ['PROVAOffice Songti SC', 'STSong', 'SimSun', CJK_SERIF]
   const nfkc = font.normalize('NFKC')
   // Arabic: bundled Noto subsets stand in for missing fonts; Chromium's silent
   // fallback is a Geeza Pro-style UI face, larger and heavier than the naskh
@@ -596,7 +596,7 @@ export function cssFontFamily(font: string): string {
   // Kefa alias (fonts.css) re-centers Chromium's ~1.35x-wide Kefa fallback. On
   // Windows the declared name resolves natively ahead of the alias.
   if (/nyala|ebrima|abyssinica|ethiopic/i.test(nfkc)) {
-    return `${chain(font, 'GenOffice Ethiopic')},sans-serif`
+    return `${chain(font, 'PROVAOffice Ethiopic')},sans-serif`
   }
   // Tamil: macOS system faces stand in for Latha/Noto Sans Tamil; on Windows
   // the declared name resolves natively.

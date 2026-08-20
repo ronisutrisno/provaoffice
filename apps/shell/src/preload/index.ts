@@ -240,6 +240,18 @@ function asCloudProjectsSnapshot(result: unknown): CloudProjectsSnapshot | null 
 
 contextBridge.exposeInMainWorld('aiOffice', homeApi)
 
+const aiSettingsApi = {
+  async getAiSettings() {
+    const result: unknown = await ipcRenderer.invoke('ai:get-settings')
+    return result ?? { provider: 'prova', providers: {} }
+  },
+  async setAiSettings(settings: unknown) {
+    await ipcRenderer.invoke('ai:set-settings', settings)
+  },
+}
+
+contextBridge.exposeInMainWorld('aiOfficeAiSettings', aiSettingsApi)
+
 const projectApi: ProjectHomeApi = {
   async listProjects() {
     const result: unknown = await ipcRenderer.invoke(PROJECT_CHANNELS.list)
@@ -311,3 +323,18 @@ const tabsApi: TabsApi = {
 }
 
 contextBridge.exposeInMainWorld('aiOfficeTabs', tabsApi)
+
+const loadingApi = {
+  onTabLoading(handler: () => void) {
+    const listener = () => handler()
+    ipcRenderer.on('tab-loading', listener)
+    return () => ipcRenderer.removeListener('tab-loading', listener)
+  },
+  onTabReady(handler: () => void) {
+    const listener = () => handler()
+    ipcRenderer.on('tab-ready', listener)
+    return () => ipcRenderer.removeListener('tab-ready', listener)
+  },
+}
+
+contextBridge.exposeInMainWorld('aiOfficeLoading', loadingApi)

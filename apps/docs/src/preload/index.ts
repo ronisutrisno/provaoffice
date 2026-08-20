@@ -9,7 +9,7 @@ import type {
   MenuCommand,
   UiTheme,
 } from '../shared/ipc'
-import type { ProjectApi } from '@genoffice/project-store'
+import type { ProjectApi } from '@prova/project-store'
 
 const api: DesktopApi = {
   getLanguage: () => ipcRenderer.invoke('app:get-language'),

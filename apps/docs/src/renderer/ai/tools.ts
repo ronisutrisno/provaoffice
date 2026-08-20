@@ -1,6 +1,6 @@
 import type { Editor } from '@tiptap/core'
 import type { Node as ProseMirrorNode } from '@tiptap/pm/model'
-import type { ChartDisplay, NewChart } from '@genoffice/docx-engine'
+import type { ChartDisplay, NewChart } from '@prova/docx-engine'
 import type { AgentToolCall, AgentToolDef } from '../../shared/ipc'
 import { t } from '../i18n/locale'
 import { executeCommands, type Command, type CommandEnvelope } from './commands'
@@ -114,7 +114,7 @@ export const AGENT_TOOLS: AgentToolDef[] = [
   {
     name: 'image_search',
     description:
-      'Search for images. Returns a list of image imageUrl entries; after picking one, insert it into the document with insert_image.',
+      'Search for images via Pixabay. Returns a list of image URLs; after picking one, insert it into the document with insert_image.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -140,7 +140,7 @@ export const AGENT_TOOLS: AgentToolDef[] = [
   {
     name: 'insert_chart',
     description:
-      'Insert a chart (saved as a native Word chart). Data must be real: from the document content or web_search results — do not make up numbers.',
+      'Insert a chart (saved as a native Word chart). Data must be real: from the document content or server-side web search results — do not make up numbers.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -311,7 +311,7 @@ function imageSizeOf(dataUrl: string): Promise<{ width: number; height: number }
   })
 }
 
-/** Async tools: web search / image search / insert web image. */
+/** Async tools: web search (DuckDuckGo) / image search (Pixabay) / insert web image. */
 async function executeAsyncTool(
   editor: Editor,
   call: AgentToolCall,
@@ -322,11 +322,10 @@ async function executeAsyncTool(
       const query = String(call.input.query ?? '').trim()
       if (!query) return fail(t('aiSumWebSearch'), 'query must not be empty')
       const r = await window.desktop.webSearch(query, Number(call.input.maxResults) || 6)
-      // a backend failure must not read as "no results" — the model would fabricate conclusions
       if (r.method === 'error') {
         return fail(
           t('aiSumWebSearch'),
-          `web search failed (service error, not an empty result — you may retry): ${r.error ?? 'unknown error'}`,
+          `web search failed: ${r.error ?? 'unknown error'}`,
         )
       }
       const lines: string[] = []
@@ -343,22 +342,31 @@ async function executeAsyncTool(
     case 'image_search': {
       const query = String(call.input.query ?? '').trim()
       if (!query) return fail(t('aiSumImageSearch'), 'query must not be empty')
-      const r = await window.desktop.imageSearch(query, Number(call.input.maxResults) || 8)
-      // a backend failure must not read as an empty gallery — the model would fabricate image choices
-      if (r.method === 'error') {
-        return fail(
-          t('aiSumImageSearch'),
-          `image search failed (service error, not an empty result — you may retry): ${r.error ?? 'unknown error'}`,
+      const apiKey = '55586367-a4b8c80ba306e0b4fb4afca94'
+      const maxResults = Number(call.input.maxResults) || 8
+      try {
+        const url = `https://pixabay.com/api/?key=${encodeURIComponent(apiKey)}&q=${encodeURIComponent(query)}&image_type=photo&per_page=${maxResults}&safesearch=true`
+        const resp = await fetch(url)
+        if (!resp.ok) return fail(t('aiSumImageSearch'), `Pixabay API error: ${resp.status}`)
+        const data = await resp.json()
+        const hits = (data.hits ?? []) as Array<{ webformatURL: string; imageWidth: number; imageHeight: number; tags: string }>
+        const images = hits.map((h) => ({
+          title: h.tags,
+          imageUrl: h.webformatURL,
+          width: h.imageWidth,
+          height: h.imageHeight,
+        }))
+        const lines = images.map(
+          (im, i) =>
+            `${i + 1}. ${im.title || '(untitled)'} [${im.width ?? '?'}x${im.height ?? '?'}]\n   ${im.imageUrl}`,
         )
-      }
-      const lines = r.images.map(
-        (im, i) =>
-          `${i + 1}. ${im.title || '(untitled)'} [${im.width ?? '?'}x${im.height ?? '?'}]\n   ${im.imageUrl}`,
-      )
-      return {
-        output: lines.join('\n') || '(no images)',
-        mutated: false,
-        summary: t('aiSumImageSearchDone', { query, count: r.images.length }),
+        return {
+          output: lines.join('\n') || '(no images)',
+          mutated: false,
+          summary: t('aiSumImageSearchDone', { query, count: images.length }),
+        }
+      } catch (err) {
+        return fail(t('aiSumImageSearch'), `image search failed: ${err}`)
       }
     }
     case 'insert_image': {

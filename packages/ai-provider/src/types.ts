@@ -1,8 +1,8 @@
-import type { AgentMessage, AgentToolCall, AgentToolDef } from '@genoffice/agent-core'
+import type { AgentMessage, AgentToolCall, AgentToolDef } from '@prova/agent-core'
 
-export type AiProviderId = 'genspark' | 'anthropic' | 'gemini' | 'deepseek' | 'openai' | 'custom'
+export type AiProviderId = 'genspark' | 'anthropic' | 'gemini' | 'deepseek' | 'openai' | 'custom' | 'prova'
 
-/** Genspark account status (gsk login state; the sole auth source for AI features) */
+/** PROVA-AI account status (gsk login state; the sole auth source for AI features) */
 export interface GenSparkAccountStatus {
   loggedIn: boolean
   email?: string
@@ -21,6 +21,7 @@ export interface AiProviderMeta {
   models: string[]
   defaultModel: string
   keyPlaceholder: string
+  defaultBaseUrl?: string
   needsBaseUrl?: boolean
 }
 

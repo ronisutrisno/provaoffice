@@ -2,12 +2,11 @@ import { useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import { useI18n } from './locale'
 import type { StringKey } from './locale'
-import type { AccountStatus, UiTheme } from '../../shared/home-api'
+import type { UiTheme } from '../../shared/home-api'
 import './settings.css'
 
 // ── Settings modal (opened from the account menu) ─────────
-// Genspark-style two-pane dialog: section nav on the left, fields on the right.
-// All values go through the existing home IPC; nothing is stored locally.
+// Two-pane dialog: section nav on the left, fields on the right.
 
 // sorted by ISO 639 language code — native-script labels have no natural
 // shared alphabet, so the code is the ordering key
@@ -33,7 +32,6 @@ const LANG_OPTIONS = [
   { value: 'zh-TW', label: '繁體中文' },
 ] as const
 
-// GenMail's option order: follow-system first, then the manual picks
 const THEME_OPTIONS = [
   { value: 'system', labelKey: 'themeSystem' },
   { value: 'light', labelKey: 'themeLight' },
@@ -45,45 +43,33 @@ const CHANNEL_OPTIONS = [
   { value: 'beta', labelKey: 'channelBeta' },
 ] as const satisfies readonly { value: 'stable' | 'beta'; labelKey: StringKey }[]
 
-/** GitHub-style abbreviated stargazer count (2591 → "2.6k") — the number is
- * social proof, not a metric; the cached/exact value would only look stale */
 function formatStars(n: number): string {
   if (n < 1000) return String(n)
   const k = n / 1000
   return `${k >= 100 ? Math.round(k) : (Math.round(k * 10) / 10).toString().replace(/\.0$/, '')}k`
 }
 
-type SectionId = 'account' | 'general' | 'about'
+type SectionId = 'ai' | 'general' | 'about'
 
-const SECTIONS: readonly { id: SectionId; labelKey: StringKey }[] = [
-  { id: 'account', labelKey: 'setSecAccount' },
-  { id: 'general', labelKey: 'setSecGeneral' },
-  { id: 'about', labelKey: 'setSecAbout' },
+const SECTIONS: readonly { id: SectionId; labelKey: string }[] = [
+  { id: 'ai', labelKey: 'AI Provider' },
+  { id: 'general', labelKey: '' },
+  { id: 'about', labelKey: '' },
 ]
 
 function SectionIcon({ id }: { id: SectionId }) {
-  if (id === 'account') {
+  if (id === 'ai') {
     return (
       <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
         <circle cx="8" cy="5.2" r="2.9" stroke="currentColor" strokeWidth="1.3" />
-        <path
-          d="M2.7 13.6a5.5 5.5 0 0 1 10.6 0"
-          stroke="currentColor"
-          strokeWidth="1.3"
-          strokeLinecap="round"
-        />
+        <path d="M2.7 13.6a5.5 5.5 0 0 1 10.6 0" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
       </svg>
     )
   }
   if (id === 'general') {
     return (
       <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-        <path
-          d="M2 5h8M13 5h1M2 11h1M6 11h8"
-          stroke="currentColor"
-          strokeWidth="1.3"
-          strokeLinecap="round"
-        />
+        <path d="M2 5h8M13 5h1M2 11h1M6 11h8" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
         <circle cx="11.5" cy="5" r="1.7" stroke="currentColor" strokeWidth="1.3" />
         <circle cx="4.5" cy="11" r="1.7" stroke="currentColor" strokeWidth="1.3" />
       </svg>
@@ -98,93 +84,69 @@ function SectionIcon({ id }: { id: SectionId }) {
   )
 }
 
-/** label-over-value field row with an optional right-aligned action */
-function Field({
-  label,
-  value,
-  valueTitle,
-  action,
-}: {
-  label: string
-  value: string
-  valueTitle?: string
-  action?: ReactNode
-}) {
+function Field({ label, value, valueTitle, action }: { label: string; value: string; valueTitle?: string; action?: ReactNode }) {
   return (
     <div className="set-field">
       <div className="set-field-text">
         <div className="set-field-label">{label}</div>
-        <div className="set-field-value" data-tip={valueTitle}>
-          {value}
-        </div>
+        <div className="set-field-value" data-tip={valueTitle}>{value}</div>
       </div>
       {action}
     </div>
   )
 }
 
-export interface SettingsModalProps {
-  status: AccountStatus | null
-  loggingOut: boolean
-  /** browser sign-in in progress (spinner shows on the account entry) */
-  loginWaiting: boolean
-  /** device auth URL while waiting — rescue actions when the browser did not auto-open */
-  loginUrl: string | null
-  urlCopied: boolean
-  onOpenLoginUrl: () => void
-  onCopyLoginUrl: () => void
-  onClose: () => void
-  /** closes the modal and launches the Genspark login flow (progress shows on the account entry) */
-  onLogin: () => void
-  onLogout: () => void
+interface AiProviderConfig {
+  apiKey: string
+  model: string
+  baseUrl?: string
 }
 
-export function SettingsModal({
-  status,
-  loggingOut,
-  loginWaiting,
-  loginUrl,
-  urlCopied,
-  onOpenLoginUrl,
-  onCopyLoginUrl,
-  onClose,
-  onLogin,
-  onLogout,
-}: SettingsModalProps) {
+interface AiSettings {
+  provider: string
+  providers: Record<string, AiProviderConfig>
+}
+
+export interface SettingsModalProps {
+  onClose: () => void
+}
+
+export function SettingsModal({ onClose }: SettingsModalProps) {
   const { lang, setLang, t } = useI18n()
-  const [section, setSection] = useState<SectionId>('account')
+  const [section, setSection] = useState<SectionId>('ai')
   const [theme, setTheme] = useState<UiTheme>('system')
   const [saveDir, setSaveDir] = useState('')
   const [channel, setChannel] = useState<'stable' | 'beta'>('stable')
   const [appVersion, setAppVersion] = useState('')
   const [githubStars, setGithubStars] = useState<number | null>(null)
 
+  // AI settings
+  const [aiSettings, setAiSettings] = useState<AiSettings>({ provider: 'prova', providers: {} })
+  const [provaApiKey, setProvaApiKey] = useState('')
+
   useEffect(() => {
     let alive = true
-    void window.aiOffice.getTheme?.().then((th) => {
-      if (alive) setTheme(th)
+    void window.aiOffice.getTheme?.().then((th) => { if (alive) setTheme(th) })
+    void window.aiOffice.getDefaultSaveDir?.().then((dir) => { if (alive && dir) setSaveDir(dir) })
+    void window.aiOffice.getUpdateChannel?.().then((ch) => { if (alive) setChannel(ch) })
+    void window.aiOffice.getAppVersion?.().then((v) => { if (alive && v) setAppVersion(v) })
+    void window.aiOffice.githubStars?.().then((n) => { if (alive && n !== null) setGithubStars(n) })
+
+    // Load AI settings
+    void (window as any).aiOfficeAiSettings?.getAiSettings?.().then((settings: AiSettings) => {
+      if (!alive || !settings) return
+      setAiSettings(settings)
+      const prova = settings.providers?.prova
+      if (prova) {
+        setProvaApiKey(prova.apiKey ?? '')
+      }
     })
-    void window.aiOffice.getDefaultSaveDir?.().then((dir) => {
-      if (alive && dir) setSaveDir(dir)
-    })
-    void window.aiOffice.getUpdateChannel?.().then((ch) => {
-      if (alive) setChannel(ch)
-    })
-    void window.aiOffice.getAppVersion?.().then((v) => {
-      if (alive && v) setAppVersion(v)
-    })
-    void window.aiOffice.githubStars?.().then((n) => {
-      if (alive && n !== null) setGithubStars(n)
-    })
-    return () => {
-      alive = false
-    }
+
+    return () => { alive = false }
   }, [])
 
   useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose()
-    }
+    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
   }, [onClose])
@@ -197,95 +159,62 @@ export function SettingsModal({
   }
 
   const changeSaveDir = () => {
-    void window.aiOffice.pickDefaultSaveDir?.().then((dir) => {
-      if (dir) setSaveDir(dir)
-    })
+    void window.aiOffice.pickDefaultSaveDir?.().then((dir) => { if (dir) setSaveDir(dir) })
   }
 
-  const loggedIn = status?.loggedIn ?? false
-  const email = status?.email ?? ''
+  const saveAiSettings = async (provider: string, newSettings: AiSettings) => {
+    setAiSettings(newSettings)
+    await (window as any).aiOfficeAiSettings?.setAiSettings?.(newSettings)
+  }
+
+  const updateProva = async (field: 'baseUrl' | 'apiKey' | 'model', value: string) => {
+    if (field === 'apiKey') setProvaApiKey(value)
+
+    const updated = { ...aiSettings, provider: 'prova', providers: { ...aiSettings.providers } }
+    updated.providers.prova = {
+      baseUrl: 'https://llm.proxsis.com/api/v1',
+      apiKey: field === 'apiKey' ? value : provaApiKey,
+      model: 'PROVAOffice',
+    }
+    await saveAiSettings('prova', updated)
+  }
 
   return (
-    <div
-      className="set-overlay"
-      onMouseDown={(e) => {
-        if (e.target === e.currentTarget) onClose()
-      }}
-    >
-      <div className="set-dialog" role="dialog" aria-modal="true" aria-label={t('settings')}>
+    <div className="set-overlay" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose() }}>
+      <div className="set-dialog" role="dialog" aria-modal="true" aria-label="Settings">
         <div className="set-header">
-          <h2 className="set-title">{t('settings')}</h2>
-          <button className="set-close" onClick={onClose} aria-label={t('cancel')}>
+          <h2 className="set-title">Settings</h2>
+          <button className="set-close" onClick={onClose} aria-label="Close">
             <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true">
-              <path
-                d="M2 2l10 10M12 2L2 12"
-                stroke="currentColor"
-                strokeWidth="1.5"
-                strokeLinecap="round"
-              />
+              <path d="M2 2l10 10M12 2L2 12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
             </svg>
           </button>
         </div>
         <div className="set-body">
-          <nav className="set-nav" aria-label={t('settings')}>
+          <nav className="set-nav" aria-label="Settings">
             {SECTIONS.map((s) => (
-              <button
-                key={s.id}
-                className={`set-nav-item${section === s.id ? ' active' : ''}`}
-                aria-current={section === s.id}
-                onClick={() => setSection(s.id)}
-              >
+              <button key={s.id} className={`set-nav-item${section === s.id ? ' active' : ''}`} aria-current={section === s.id} onClick={() => setSection(s.id)}>
                 <SectionIcon id={s.id} />
-                {t(s.labelKey)}
+                {s.labelKey || t(s.labelKey as StringKey)}
               </button>
             ))}
           </nav>
           <div className="set-pane">
-            {section === 'account' && (
+            {section === 'ai' && (
               <>
-                <h3 className="set-pane-title">{t('setSecAccount')}</h3>
-                <Field label={t('setEmail')} value={loggedIn ? email : t('setNotLoggedIn')} />
-                {loggedIn && (
-                  <Field
-                    label={t('credits')}
-                    value={
-                      status?.creditBalance === undefined
-                        ? '—'
-                        : Math.floor(status.creditBalance).toLocaleString('en-US')
-                    }
-                    action={
-                      <button
-                        className="set-btn"
-                        data-tip={t('creditsTip')}
-                        onClick={() => void window.aiOffice.openCreditUsage?.()}
-                      >
-                        {t('setViewUsage')}
-                      </button>
-                    }
-                  />
-                )}
-                <div className="set-pane-footer">
-                  {loggedIn ? (
-                    <button className="set-btn danger" disabled={loggingOut} onClick={onLogout}>
-                      {loggingOut ? t('loggingOut') : t('logout')}
-                    </button>
-                  ) : (
-                    <>
-                      {loginWaiting && loginUrl && (
-                        <>
-                          <button className="set-btn" onClick={onOpenLoginUrl}>
-                            {t('loginOpenManually')}
-                          </button>
-                          <button className="set-btn" onClick={onCopyLoginUrl}>
-                            {urlCopied ? t('loginCopied') : t('loginCopyUrl')}
-                          </button>
-                        </>
-                      )}
-                      <button className="set-btn primary" onClick={onLogin}>
-                        {loginWaiting ? t('waitingShort') : t('loginGenspark')}
-                      </button>
-                    </>
-                  )}
+                <h3 className="set-pane-title">AI Provider</h3>
+
+                <h4 style={{ fontSize: '13px', fontWeight: 600, margin: '12px 0 6px', color: 'var(--text)' }}>ProxsisLLM</h4>
+                <div className="set-field">
+                  <div className="set-field-text">
+                    <label className="set-field-label" htmlFor="prova-apikey">API Key (License)</label>
+                  </div>
+                  <input id="prova-apikey" className="set-input set-input-wide" type="password" placeholder="Enter your license key" value={provaApiKey} onChange={(e) => void setProvaApiKey(e.target.value)} />
+                </div>
+                <div style={{ marginTop: '8px', display: 'flex', justifyContent: 'flex-end' }}>
+                  <button className="set-btn primary" onClick={() => { void updateProva('apiKey', provaApiKey); onClose() }}>
+                    Simpan
+                  </button>
                 </div>
               </>
             )}
@@ -294,62 +223,27 @@ export function SettingsModal({
                 <h3 className="set-pane-title">{t('setSecGeneral')}</h3>
                 <div className="set-field">
                   <div className="set-field-text">
-                    <label className="set-field-label" htmlFor="set-lang">
-                      {t('language')}
-                    </label>
+                    <label className="set-field-label" htmlFor="set-lang">{t('language')}</label>
                   </div>
                   <span className="set-select-wrap">
-                    <span className="set-select-text" aria-hidden="true">
-                      {LANG_OPTIONS.find((o) => o.value === lang)?.label ?? lang}
-                    </span>
-                    <select
-                      id="set-lang"
-                      className="set-select"
-                      value={lang}
-                      onChange={(e) => setLang(e.target.value as typeof lang)}
-                    >
-                      {LANG_OPTIONS.map((opt) => (
-                        <option key={opt.value} value={opt.value}>
-                          {opt.label}
-                        </option>
-                      ))}
+                    <span className="set-select-text" aria-hidden="true">{LANG_OPTIONS.find((o) => o.value === lang)?.label ?? lang}</span>
+                    <select id="set-lang" className="set-select" value={lang} onChange={(e) => setLang(e.target.value as typeof lang)}>
+                      {LANG_OPTIONS.map((opt) => (<option key={opt.value} value={opt.value}>{opt.label}</option>))}
                     </select>
                   </span>
                 </div>
                 <div className="set-field">
                   <div className="set-field-text">
-                    <label className="set-field-label" htmlFor="set-theme">
-                      {t('theme')}
-                    </label>
+                    <label className="set-field-label" htmlFor="set-theme">{t('theme')}</label>
                   </div>
                   <span className="set-select-wrap">
-                    <span className="set-select-text" aria-hidden="true">
-                      {t(THEME_OPTIONS.find((o) => o.value === theme)?.labelKey ?? 'themeSystem')}
-                    </span>
-                    <select
-                      id="set-theme"
-                      className="set-select"
-                      value={theme}
-                      onChange={(e) => applyTheme(e.target.value as UiTheme)}
-                    >
-                      {THEME_OPTIONS.map((opt) => (
-                        <option key={opt.value} value={opt.value}>
-                          {t(opt.labelKey)}
-                        </option>
-                      ))}
+                    <span className="set-select-text" aria-hidden="true">{t(THEME_OPTIONS.find((o) => o.value === theme)?.labelKey ?? 'themeSystem')}</span>
+                    <select id="set-theme" className="set-select" value={theme} onChange={(e) => applyTheme(e.target.value as UiTheme)}>
+                      {THEME_OPTIONS.map((opt) => (<option key={opt.value} value={opt.value}>{t(opt.labelKey)}</option>))}
                     </select>
                   </span>
                 </div>
-                <Field
-                  label={t('saveLocation')}
-                  value={saveDir || '—'}
-                  valueTitle={saveDir}
-                  action={
-                    <button className="set-btn" onClick={changeSaveDir}>
-                      {t('setChange')}
-                    </button>
-                  }
-                />
+                <Field label={t('saveLocation')} value={saveDir || '—'} valueTitle={saveDir} action={<button className="set-btn" onClick={changeSaveDir}>{t('setChange')}</button>} />
               </>
             )}
             {section === 'about' && (
@@ -358,51 +252,16 @@ export function SettingsModal({
                 <Field label={t('versionLabel')} value={appVersion || '—'} />
                 <div className="set-field">
                   <div className="set-field-text">
-                    <label className="set-field-label" htmlFor="set-channel">
-                      {t('updateChannel')}
-                    </label>
+                    <label className="set-field-label" htmlFor="set-channel">{t('updateChannel')}</label>
                   </div>
                   <span className="set-select-wrap">
-                    <span className="set-select-text" aria-hidden="true">
-                      {t(
-                        CHANNEL_OPTIONS.find((o) => o.value === channel)?.labelKey ??
-                          'channelStable',
-                      )}
-                    </span>
-                    <select
-                      id="set-channel"
-                      className="set-select"
-                      value={channel}
-                      onChange={(e) => {
-                        const next = e.target.value === 'beta' ? 'beta' : 'stable'
-                        setChannel(next)
-                        void window.aiOffice.setUpdateChannel(next)
-                      }}
-                    >
-                      {CHANNEL_OPTIONS.map((opt) => (
-                        <option key={opt.value} value={opt.value}>
-                          {t(opt.labelKey)}
-                        </option>
-                      ))}
+                    <span className="set-select-text" aria-hidden="true">{t(CHANNEL_OPTIONS.find((o) => o.value === channel)?.labelKey ?? 'channelStable')}</span>
+                    <select id="set-channel" className="set-select" value={channel} onChange={(e) => { const next = e.target.value === 'beta' ? 'beta' : 'stable'; setChannel(next); void window.aiOffice.setUpdateChannel(next) }}>
+                      {CHANNEL_OPTIONS.map((opt) => (<option key={opt.value} value={opt.value}>{t(opt.labelKey)}</option>))}
                     </select>
                   </span>
                 </div>
-                <Field
-                  label={t('setGithub')}
-                  value={
-                    githubStars === null
-                      ? 'github.com/genspark-ai/genoffice'
-                      : `github.com/genspark-ai/genoffice · ★ ${formatStars(githubStars)}`
-                  }
-                  action={
-                    <button
-                      className="set-btn"
-                      onClick={() => void window.aiOffice.openGitHubRepo?.()}
-                    >
-                      {t('starOnGitHub')}
-                    </button>
-                  }
-                />
+                <Field label="GitHub" value={githubStars === null ? 'provaoffice' : `provaoffice · ★ ${formatStars(githubStars)}`} action={<button className="set-btn" onClick={() => void window.aiOffice.openGitHubRepo?.()}>{t('starOnGitHub')}</button>} />
               </>
             )}
           </div>

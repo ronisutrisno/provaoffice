@@ -37,7 +37,7 @@ import {
   type TableModel,
   type TextboxDisplay,
   type TextboxParaPatch,
-} from '@genoffice/docx-engine'
+} from '@prova/docx-engine'
 import { t } from '../i18n/locale'
 import { maxWordWidthPx, textHasComplexScript } from '../line-metrics'
 import { inlineMathML } from './equation'

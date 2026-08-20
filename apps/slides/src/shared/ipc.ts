@@ -7,18 +7,18 @@
  * renderer sends edit intents (text/geometry changes) back to the main process, which applies
  * them to the model and rebuilds the RenderSlide.
  */
-import type { RenderSlide } from '@genoffice/pptx-render'
-import type { SlideComment, SectionInfo } from '@genoffice/pptx-engine'
+import type { RenderSlide } from '@prova/pptx-render'
+import type { SlideComment, SectionInfo } from '@prova/pptx-engine'
 import type {
   AiSettings,
   AiStreamChunk,
   AiStreamRequest,
   GenSparkAccountStatus,
-} from '@genoffice/ai-provider'
+} from '@prova/ai-provider'
 
-export type { SlideComment, SectionInfo } from '@genoffice/pptx-engine'
+export type { SlideComment, SectionInfo } from '@prova/pptx-engine'
 
-// Canonical definitions of AI-related types live in @genoffice/ai-provider / @genoffice/agent-core (shared with docs)
+// Canonical definitions of AI-related types live in @prova/ai-provider / @prova/agent-core (shared with docs)
 export type {
   AiProviderConfig,
   AiProviderId,
@@ -27,9 +27,9 @@ export type {
   AiStreamChunk,
   AiStreamRequest,
   GenSparkAccountStatus,
-} from '@genoffice/ai-provider'
-export { AI_PROVIDERS } from '@genoffice/ai-provider'
-export type { AgentToolCall, AgentToolDef } from '@genoffice/agent-core'
+} from '@prova/ai-provider'
+export { AI_PROVIDERS } from '@prova/ai-provider'
+export type { AgentToolCall, AgentToolDef } from '@prova/agent-core'
 
 export type UiTheme = 'light' | 'dark' | 'system'
 
@@ -1071,7 +1071,7 @@ export interface SlidesApi {
       })
     | { error: string }
   >
-  /** Whether cloud single-page generation (gsk slide_generate) is available (GENOFFICE_CLOUD_SLIDE=1 + gsk login) */
+  /** Whether cloud single-page generation (gsk slide_generate) is available (PROVAOffice_CLOUD_SLIDE=1 + gsk login) */
   cloudGenStatus: () => Promise<{ enabled: boolean }>
   /** Cloud single-page generation: brief → one-slide pptx temp file; the marker goes into an htmlToPptx pagesHtml slot in place of HTML */
   cloudGeneratePage: (op: {
@@ -1349,9 +1349,9 @@ export interface SlidesApi {
   setAiSettings: (settings: AiSettings) => Promise<void>
   aiStream: (request: AiStreamRequest) => Promise<void>
   aiStreamCancel: (requestId: string) => Promise<void>
-  /** Genspark account status (gsk login state); with withEmail also fetches the email (needs a network request, slower) */
+  /** PROVA-AI account status (gsk login state); with withEmail also fetches the email (needs a network request, slower) */
   aiGskStatus: (withEmail?: boolean) => Promise<GenSparkAccountStatus>
-  /** Open the browser to log into Genspark (fire-and-forget; aiGskStatus turns logged-in once done) */
+  /** Open the browser to log into PROVA-AI (fire-and-forget; aiGskStatus turns logged-in once done) */
   aiGskLogin: () => Promise<void>
   webSearch: (
     query: string,
@@ -1391,7 +1391,7 @@ export interface SlidesApi {
     url: string
     keepSrcRect?: boolean
   }) => Promise<RenderSlide | null>
-  /** gsk (Genspark) AI image generation/editing, returns the image URL (error prompts login when logged out) */
+  /** gsk (PROVA-AI) AI image generation/editing, returns the image URL (error prompts login when logged out) */
   generateImage: (op: {
     prompt: string
     model?: string
@@ -1399,7 +1399,7 @@ export interface SlidesApi {
     aspectRatio?: string
     imageSize?: string
   }) => Promise<{ url?: string; error?: string }>
-  /** gsk (Genspark) media analysis: image/audio/video content understanding, returns analysis text */
+  /** gsk (PROVA-AI) media analysis: image/audio/video content understanding, returns analysis text */
   analyzeMedia: (op: {
     mediaUrls: string[]
     requirements: string

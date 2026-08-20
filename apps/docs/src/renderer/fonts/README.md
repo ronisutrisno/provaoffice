@@ -40,7 +40,7 @@ forms + basic Latin
 Rare characters outside the subset still fall through to system fonts (shown as
 missing glyphs in minimal environments); bold is synthesized by the browser.
 
-The serif subset also backs the `GenOffice Fullwidth TC` face (`fonts.css`), a
+The serif subset also backs the `PROVAOffice Fullwidth TC` face (`fonts.css`), a
 unicode-range shim (U+FF0D/FF0F/FF3C/FF3F/FF5E) slotted before Songti TC in the
 Traditional Chinese serif chain: Songti TC draws those fullwidth glyphs at
 ~0.2-0.5em of ink inside the 1em advance, so a PMingLiU document's U+FF0F
@@ -51,8 +51,8 @@ chain order; advances are 1.0em everywhere, so line breaking is unchanged.
 
 | Font                              | Role                                             |
 | --------------------------------- | ------------------------------------------------ |
-| GenOffice Serif KR (subset woff2) | Batang-metric stand-in for Korean serif families |
-| GenOffice Sans KR (subset woff2)  | fallback for Korean sans families (Malgun etc.)  |
+| PROVAOffice Serif KR (subset woff2) | Batang-metric stand-in for Korean serif families |
+| PROVAOffice Sans KR (subset woff2)  | fallback for Korean sans families (Malgun etc.)  |
 
 Source: Noto Serif/Sans CJK KR Regular from [notofonts/noto-cjk](https://github.com/notofonts/noto-cjk)
 (SIL OFL 1.1), subset with fonttools to the 2,350 KS X 1001 syllables + jamo

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { createPortal } from 'react-dom'
 import { numfmt } from '@univerjs/core'
-import { shapePreviewPath, useDismissablePopover } from '@genoffice/ui'
+import { shapePreviewPath, useDismissablePopover } from '@prova/ui'
 
 import type { createUniver } from './create-univer'
 

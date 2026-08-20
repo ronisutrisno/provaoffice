@@ -1,4 +1,4 @@
-import type { AgentMessage, AgentToolCall, AgentToolDef } from '@genoffice/agent-core'
+import type { AgentMessage, AgentToolCall, AgentToolDef } from '@prova/agent-core'
 import { aiFetch } from './fetch'
 import { httpBodyDetail } from './http-error'
 import { GENSPARK_LLM_BASE_URLS, gensparkAttributionHeaders } from './providers'
@@ -94,7 +94,7 @@ function sseErrorText(error: unknown, fallback: string): string {
 
 /**
  * Gateways can answer a `stream: true` request with a complete non-SSE JSON body —
- * observed on the Genspark Anthropic route when credits are exhausted (HTTP 200,
+ * observed on the PROVA-AI Anthropic route when credits are exhausted (HTTP 200,
  * Content-Type: application/json, the notice text inside a regular message). The SSE
  * parser would find no `data:` lines in such a body and dissolve it into an empty
  * "successful" turn. Returns the body text when that happens, else null.
@@ -106,7 +106,7 @@ async function jsonBodyInsteadOfSse(response: Response): Promise<string | null> 
 
 /**
  * A non-SSE JSON reply whose text is the gateway's credits-exhausted notice
- * (Genspark: "Your Genspark credits have been exhausted…") surfaces as a typed
+ * (Genspark: "Your PROVA-AI credits have been exhausted…") surfaces as a typed
  * error so the apps show a localized "top up" message (errorCode 'credits')
  * instead of the English notice as a normal assistant reply.
  */
@@ -905,6 +905,9 @@ export async function streamForProvider(
       )
     case 'custom':
       if (!config.baseUrl) throw new Error('A custom provider requires a Base URL')
+      return streamOpenAiCompatible(config.baseUrl, config, system, messages, tools, maxTokens, cb)
+    case 'prova':
+      if (!config.baseUrl) throw new Error('PROVA-AI provider requires a Base URL')
       return streamOpenAiCompatible(config.baseUrl, config, system, messages, tools, maxTokens, cb)
     default:
       throw new Error(`Unknown provider: ${provider}`)

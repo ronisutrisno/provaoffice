@@ -217,6 +217,28 @@
   background: var(--surface);
 }
 
+.set-input {
+  flex: 1;
+  height: 28px;
+  padding: 0 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+  outline: none;
+}
+
+.set-input:focus {
+  border-color: var(--accent);
+}
+
+.set-input-wide {
+  width: 100%;
+  min-width: 300px;
+}
+
 .set-btn {
   flex-shrink: 0;
   display: inline-flex;
@@ -247,10 +269,17 @@
   border-color: var(--color-btn-primary);
   background: var(--color-btn-primary);
   color: var(--color-btn-primary-text);
+  transition: transform 0.1s, opacity 0.1s;
 }
 
 .set-btn.primary:hover {
   background: var(--color-btn-primary-hover);
+}
+
+.set-btn.primary:active {
+  transform: scale(0.97);
+  opacity: 0.8;
+  transition: transform 0.1s, opacity 0.1s;
 }
 
 .set-btn.danger {

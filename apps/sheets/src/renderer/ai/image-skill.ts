@@ -1,9 +1,9 @@
-import type { AgentSkill } from '@genoffice/agent-core'
+import type { AgentSkill } from '@prova/agent-core'
 import { t } from '../i18n/locale'
 
 /**
  * Image acquisition AgentSkill: image_search (shared main-process channel, same
- * source as docs/slides) and generate_image (sheets-owned Genspark channel).
+ * source as docs/slides) and generate_image (sheets-owned PROVA-AI channel).
  * Both return a URL; placement happens through the normal propose_operations
  * add_image path, which downloads the URL in the main process on apply.
  */
@@ -35,7 +35,7 @@ export function createImageSkill(): AgentSkill {
       {
         name: 'generate_image',
         description:
-          'Generate an image with AI from a text prompt (Genspark account required). Returns a URL to insert ' +
+          'Generate an image with AI from a text prompt (PROVA-AI account required). Returns a URL to insert ' +
           'with propose_operations add_image. Use for illustrations/decorative art; prefer image_search for real-world subjects.',
         inputSchema: {
           type: 'object',
@@ -63,27 +63,31 @@ export function createImageSkill(): AgentSkill {
             summary: t('aiToolImageSearch'),
           }
         }
-        const result = await window.desktopApi.imageSearch(
-          query,
-          Number(call.input.maxResults) || 8,
-        )
-        // A backend failure must not read as an empty gallery — the model
-        // would fabricate image choices
-        if (result.method === 'error') {
+        const pixabayKey = '55586367-a4b8c80ba306e0b4fb4afca94'
+        const maxResults = Number(call.input.maxResults) || 8
+        try {
+          const url = `https://pixabay.com/api/?key=${encodeURIComponent(pixabayKey)}&q=${encodeURIComponent(query)}&image_type=photo&per_page=${maxResults}&safesearch=true`
+          const resp = await fetch(url)
+          if (!resp.ok) return { output: `Pixabay API error: ${resp.status}`, isError: true, summary: t('aiToolImageSearch') }
+          const data = await resp.json()
+          const hits = (data.hits ?? []) as Array<{ webformatURL: string; imageWidth: number; imageHeight: number; tags: string }>
+          const images = hits.map((h) => ({
+            title: h.tags,
+            imageUrl: h.webformatURL,
+            width: h.imageWidth,
+            height: h.imageHeight,
+          }))
+          const lines = images.map(
+            (image, index) =>
+              `${index + 1}. ${image.title || '(untitled)'} [${image.width ?? '?'}x${image.height ?? '?'}]\n   ${image.imageUrl}`,
+          )
           return {
-            output: `image search failed (service error, not an empty result — you may retry): ${result.error ?? 'unknown error'}`,
-            isError: true,
-            summary: t('aiToolImageSearch'),
+            output: lines.join('\n') || '(no images)',
+            mutated: false,
+            summary: t('aiToolImageSearchDone', { query, count: images.length }),
           }
-        }
-        const lines = result.images.map(
-          (image, index) =>
-            `${index + 1}. ${image.title || '(untitled)'} [${image.width ?? '?'}x${image.height ?? '?'}]\n   ${image.imageUrl}`,
-        )
-        return {
-          output: lines.join('\n') || '(no images)',
-          mutated: false,
-          summary: t('aiToolImageSearchDone', { query, count: result.images.length }),
+        } catch (err) {
+          return { output: `image search failed: ${err}`, isError: true, summary: t('aiToolImageSearch') }
         }
       }
       if (call.name === 'generate_image') {

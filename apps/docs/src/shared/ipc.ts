@@ -14,7 +14,7 @@ export interface PickImageResult {
   name: string
 }
 
-// ---- AI provider settings/config/streaming: canonical types live in @genoffice/ai-provider ----
+// ---- AI provider settings/config/streaming: canonical types live in @prova/ai-provider ----
 
 import type {
   AiChatRequest,
@@ -23,8 +23,8 @@ import type {
   AiStreamChunk,
   AiStreamRequest,
   GenSparkAccountStatus,
-} from '@genoffice/ai-provider'
-import type { FaceVerticalMetrics } from '@genoffice/font-metrics'
+} from '@prova/ai-provider'
+import type { FaceVerticalMetrics } from '@prova/font-metrics'
 
 export type { FaceVerticalMetrics }
 
@@ -38,17 +38,17 @@ export type {
   AiStreamChunk,
   AiStreamRequest,
   GenSparkAccountStatus,
-} from '@genoffice/ai-provider'
-export { AI_PROVIDERS } from '@genoffice/ai-provider'
+} from '@prova/ai-provider'
+export { AI_PROVIDERS } from '@prova/ai-provider'
 
-// ---- agent protocol: canonical types live in @genoffice/agent-core ----
+// ---- agent protocol: canonical types live in @prova/agent-core ----
 
 export type {
   AgentMessage,
   AgentToolCall,
   AgentToolDef,
   AgentToolResult,
-} from '@genoffice/agent-core'
+} from '@prova/agent-core'
 
 // ---- chat attachments (local files fed to the agent via tools) ----
 
@@ -216,9 +216,9 @@ export interface DesktopApi {
   /** start a streaming AI call; deltas arrive via onAiStream with the same requestId */
   aiStream(request: AiStreamRequest): Promise<void>
   aiStreamCancel(requestId: string): Promise<void>
-  /** Genspark account status (gsk login state); withEmail also returns the email (needs a network request, slower) */
+  /** PROVA-AI account status (gsk login state); withEmail also returns the email (needs a network request, slower) */
   aiGskStatus(withEmail?: boolean): Promise<GenSparkAccountStatus>
-  /** Open the browser to log in to Genspark (fire-and-forget; aiGskStatus flips to logged-in when done) */
+  /** Open the browser to log in to PROVA-AI (fire-and-forget; aiGskStatus flips to logged-in when done) */
   aiGskLogin(): Promise<void>
   webSearch(
     query: string,

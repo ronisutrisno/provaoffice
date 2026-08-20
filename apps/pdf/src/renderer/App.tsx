@@ -16,7 +16,7 @@ import {
 } from 'pdfjs-dist/legacy/build/pdf.mjs'
 import type { PDFDocumentProxy, RenderTask } from 'pdfjs-dist'
 import workerUrl from 'pdfjs-dist/legacy/build/pdf.worker.min.mjs?url'
-import { AiPanel, GensparkMark } from './ai/AiPanel'
+import { AiPanel, ProvaMark } from './ai/AiPanel'
 import type { PdfAiDeps } from './ai/tools'
 import {
   MARKUP_COLORS,
@@ -101,8 +101,8 @@ import {
   spliceCharColors,
 } from './color-runs'
 import type { CharStyle } from './color-runs'
-import { platformShortcuts } from '@genoffice/i18n'
-import { useDismissablePopover } from '@genoffice/ui'
+import { platformShortcuts } from '@prova/i18n'
+import { useDismissablePopover } from '@prova/ui'
 import { useI18n } from './i18n/locale'
 import { useAutosave } from './useAutosave'
 import { EDIT_FONTS } from '../shared/ipc'
@@ -157,7 +157,7 @@ const MAX_SCALE = ZOOM_STEPS[ZOOM_STEPS.length - 1]
 const PAGE_GAP = 16
 const SCROLL_PAD = 24
 // ── Sidebar (thumbnails / outline) width: drag the divider to resize; persisted ──
-const SIDEBAR_W_KEY = 'genoffice-pdf-sidebar-width'
+const SIDEBAR_W_KEY = 'GenOffice-pdf-sidebar-width'
 const SIDEBAR_W_DEFAULT = 150
 const SIDEBAR_W_MIN = 120
 /** pane padding (10px × 2) + thumb box borders (2px × 2) */
@@ -6579,7 +6579,7 @@ export default function App() {
         <div className="ribbon-body">
           {ribbonTab === 'home' && (
             <>
-              {/* ---- Genspark AI (first slot: entry + one-click AI actions, docs parity) ---- */}
+              {/* ---- PROVA-AI (first slot: entry + one-click AI actions, docs parity) ---- */}
               <div className="ribbon-group">
                 <div className="ribbon-group-items">
                   <button
@@ -6588,9 +6588,9 @@ export default function App() {
                     onClick={() => setAiCollapsed((v) => !v)}
                   >
                     <span className="rb-big-icon">
-                      <GensparkMark size={26} />
+                      <ProvaMark size={26} />
                     </span>
-                    <span>Genspark AI</span>
+                    <span>PROVA-AI</span>
                   </button>
                   <button
                     className="rb-big ai-entry"
@@ -7152,7 +7152,7 @@ export default function App() {
               aria-label={t('aiOpenAssistant')}
               onClick={() => setAiCollapsed(false)}
             >
-              <GensparkMark size={22} />
+              <ProvaMark size={22} />
             </button>
           )}
           <AiPanel api={aiApi} preset={aiPreset} onCollapse={() => setAiCollapsed(true)} />

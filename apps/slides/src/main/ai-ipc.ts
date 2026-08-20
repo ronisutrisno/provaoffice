@@ -20,8 +20,8 @@ import {
   type AiStreamRequest,
   type GenSparkAccountStatus,
   type LegacyAiSettings,
-} from '@genoffice/ai-provider'
-import { fetchRemoteImage } from '@genoffice/electron-utils'
+} from '@prova/ai-provider'
+import { fetchRemoteImage } from '@prova/electron-utils'
 import {
   webSearch,
   imageSearch,
@@ -31,14 +31,14 @@ import {
   gskAnalyzeMedia,
   gskLoginInfo,
   hasGskAuth,
-} from '@genoffice/ai-search'
-import { addPicture, editPictureSrcRect, replacePictureBytes } from '@genoffice/pptx-engine'
+} from '@prova/ai-search'
+import { addPicture, editPictureSrcRect, replacePictureBytes } from '@prova/pptx-engine'
 import { coverCropFractions } from '../shared/cover-crop'
-import { EMU_PER_PX_96 } from '@genoffice/pptx-render'
+import { EMU_PER_PX_96 } from '@prova/pptx-render'
 import { tm } from './i18n-main'
 import { pushHistory, rebuildSlide, scheduleHistoryNotify, sessions } from './session-state'
 
-// ---- AI settings + streaming proxy (the main process does the networking to avoid renderer CORS; implementation shared via @genoffice/ai-provider) ----
+// ---- AI settings + streaming proxy (the main process does the networking to avoid renderer CORS; implementation shared via @prova/ai-provider) ----
 
 const AI_SETTINGS_PATH = () => join(app.getPath('userData'), 'ai-settings.json')
 
@@ -65,12 +65,11 @@ export function registerAiIpc(): void {
   ipcMain.handle('ai:get-settings', (): AiSettings => {
     const stored = readJson<Partial<AiSettings> & LegacyAiSettings>(AI_SETTINGS_PATH(), {})
     const settings = resolveAiSettings(stored, defaultAiSettings())
-    // AI features all go through Genspark (gsk login); stored settings that chose another provider are normalized back
-    settings.provider = 'genspark'
+    settings.provider = 'prova'
     return settings
   })
 
-  // Genspark account (gsk login state): the auth source for AI features; when logged out the frontend uses this to guide login
+  // PROVA-AI account (gsk login state): the auth source for AI features; when logged out the frontend uses this to guide login
   ipcMain.handle(
     'ai:gsk-status',
     async (_event, withEmail?: boolean): Promise<GenSparkAccountStatus> => {
@@ -95,7 +94,7 @@ export function registerAiIpc(): void {
     const maxTokens = request.maxTokens ?? 8192
     const provider = settings.provider
     let config = settings.providers?.[provider]
-    // The genspark key never enters the settings file; it is fetched from the gsk login state per request
+    // The PROVA-AI key never enters the settings file; it is fetched from the gsk login state per request
     if (provider === 'genspark' && config && !config.apiKey) {
       config = { ...config, apiKey: gskApiKey() }
     }
@@ -184,7 +183,7 @@ export function registerAiIpc(): void {
 // never called; docs does not have these channels, so putting them in the wrong place raises
 // "No handler registered".
 export function registerSlidesOnlyAiIpc(): void {
-  // gsk (Genspark CLI) capabilities: AI image generation / media analysis. Returns an error prompt when not logged in.
+  // gsk (PROVA-AI CLI) capabilities: AI image generation / media analysis. Returns an error prompt when not logged in.
   ipcMain.handle(
     'ai:generate-image',
     async (

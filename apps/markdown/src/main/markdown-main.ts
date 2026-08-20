@@ -22,8 +22,8 @@ import {
   safeExternalUrl,
   showOpenDialogWithMemory,
   showSaveDialogWithMemory,
-} from '@genoffice/electron-utils'
-import { createI18n, getUiLang } from '@genoffice/i18n'
+} from '@prova/electron-utils'
+import { createI18n, getUiLang } from '@prova/i18n'
 import { atomicWriteFile } from './atomic-write'
 import { MARKDOWN_CHANNELS } from '../shared/ipc'
 import type {
@@ -670,7 +670,7 @@ function registerMarkdownIpc(): void {
       )
       if (picked.canceled || !picked.filePath) return { ok: true, canceled: true }
       // sheets-style: render the print HTML in a hidden scripting-disabled window
-      const workDir = await mkdtemp(join(tmpdir(), 'genoffice-md-pdf-'))
+      const workDir = await mkdtemp(join(tmpdir(), 'GenOffice-md-pdf-'))
       const printWin = new BrowserWindow({
         show: false,
         webPreferences: { sandbox: true, javascript: false },
@@ -759,7 +759,7 @@ export function createMarkdownView(openPath?: string | null): WebContentsView {
   return view
 }
 
-/** Standalone window mode: `npm run dev -w @genoffice/markdown`, md path passed via argv */
+/** Standalone window mode: `npm run dev -w @prova/markdown`, md path passed via argv */
 export function startMarkdownStandalone(): void {
   installNavigationGuard(app)
   installContextMenu(app, () => contextMenuLabels(getUiLang()))

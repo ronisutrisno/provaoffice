@@ -37,7 +37,7 @@ describe('chatForProvider', () => {
 
   it('anthropic: replaces an HTML error body with a readable note', async () => {
     const html =
-      '<!doctype html>\n<html>\n<head><title>Genspark</title></head><body>app shell</body></html>'
+      '<!doctype html>\n<html>\n<head><title>PROVA-AI</title></head><body>app shell</body></html>'
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(errorResponse(403, html)))
     const result = await chatForProvider('anthropic', { apiKey: 'k', model: 'm' }, 'sys', 'hi')
     expect(result.ok).toBe(false)
@@ -101,7 +101,7 @@ describe('chatForProvider', () => {
     expect(fetchMock).not.toHaveBeenCalled()
   })
 
-  it('genspark: routes by model prefix to the proxy endpoints', async () => {
+  it('Genspark: routes by model prefix to the proxy endpoints', async () => {
     const fetchMock = vi
       .fn()
       .mockResolvedValue(jsonResponse({ content: [{ type: 'text', text: 'ok' }] }))
@@ -119,14 +119,14 @@ describe('chatForProvider', () => {
     )
   })
 
-  it('genspark: stamps X-Agent-Type; direct vendors do not get it', async () => {
+  it('Genspark: stamps X-Agent-Type; direct vendors do not get it', async () => {
     const fetchMock = vi
       .fn()
       .mockImplementation(async () => jsonResponse({ content: [{ type: 'text', text: 'ok' }] }))
     vi.stubGlobal('fetch', fetchMock)
     await chatForProvider('genspark', { apiKey: 'gsk-k', model: 'claude-opus-4-7' }, 'sys', 'hi')
     expect((fetchMock.mock.calls[0]![1].headers as Record<string, string>)['X-Agent-Type']).toBe(
-      'genoffice',
+      'PROVAOffice',
     )
     fetchMock.mockClear()
     await chatForProvider('anthropic', { apiKey: 'k', model: 'claude-opus-4-7' }, 'sys', 'hi')

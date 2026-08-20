@@ -157,15 +157,15 @@ async function shootOurs(xlsx, dir, sheets) {
   const names = sheets.map((s) => s.name)
   const firstVisible = sheets.find((s) => s.active)?.name
   fs.mkdirSync(dir, { recursive: true })
-  const userDataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'genoffice-fidelity-'))
+  const userDataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'GenOffice-fidelity-'))
   const app = await electron.launch({
     executablePath: ELECTRON_BIN,
     args: [SHELL_DIR, xlsx],
     env: {
       ...process.env,
-      GENOFFICE_USER_DATA: userDataDir,
+      PROVAOffice_USER_DATA: userDataDir,
       AI_OFFICE_USER_DATA: userDataDir,
-      GENOFFICE_LANG: 'en',
+      PROVAOffice_LANG: 'en',
     },
     timeout: 30_000,
   })
@@ -346,7 +346,7 @@ for (const xlsx of files) {
     : []
   try {
     // --reshoot: keep the Excel reference from a previous run (no Excel
-    // round-trip), redo only the GenOffice shot and the diff.
+    // round-trip), redo only the PROVAOffice shot and the diff.
     refs = cachedRefs.length ? cachedRefs : exportRef(xlsx, refDir)
   } catch (e) {
     console.error('  reference export failed:', e.message.split('\n')[0])
@@ -357,7 +357,7 @@ for (const xlsx of files) {
   try {
     ours = await shootOurs(xlsx, path.join(fileDir, 'ours'), sheets)
   } catch (e) {
-    console.error('  genoffice shot failed:', e.message.split('\n')[0])
+    console.error('  PROVAOffice shot failed:', e.message.split('\n')[0])
     rows.push({ file: name, error: 'ours: ' + e.message.split('\n')[0] })
     continue
   }
@@ -380,7 +380,7 @@ ${rows
       ? `<h2>${r.file} · <span class="err">${r.error}</span></h2>`
       : `
 <h2>${r.file} · <span class="pct ${r.pct > 0.2 ? 'bad' : 'ok'}">${(r.pct * 100).toFixed(1)}% mismatch</span> · ${r.pages} ref page(s)</h2>
-<table><tr><td>Excel<br><img src="${rel(r.ref)}"></td><td>GenOffice Sheets<br><img src="${rel(r.ours)}"></td><td>diff<br><img src="${rel(r.diff)}"></td></tr></table>`,
+<table><tr><td>Excel<br><img src="${rel(r.ref)}"></td><td>PROVAOffice Sheets<br><img src="${rel(r.ours)}"></td><td>diff<br><img src="${rel(r.diff)}"></td></tr></table>`,
   )
   .join('')}
 `

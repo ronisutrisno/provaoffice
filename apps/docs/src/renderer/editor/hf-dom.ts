@@ -5,7 +5,7 @@ import {
   type HfImage,
   type HfParagraph,
   type Run,
-} from '@genoffice/docx-engine'
+} from '@prova/docx-engine'
 import { cssDualFontFamily, cssFontFamily } from '../line-metrics'
 
 /**

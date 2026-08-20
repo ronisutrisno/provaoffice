@@ -45,13 +45,9 @@ export function AppFrame({ initialOnboardingSeen }: AppFrameProps) {
   return (
     <div className="app-frame">
       <TabBar />
-      {/* docs/sheets tabs render as WebContentsView children of this window, positioned
-       * by the main process to cover this area — only Home paints its own content here. */}
       <div className="app-frame-content" style={{ visibility: homeActive ? 'visible' : 'hidden' }}>
         <Home />
       </div>
-      {/* editor WebContentsViews paint above ALL shell DOM, so the overlay only
-       * renders while the home tab is active — it comes back when home does */}
       {showOnboarding && homeActive && <Onboarding onDone={finishOnboarding} />}
       {starPromptDocOpens !== null && !showOnboarding && homeActive && (
         <StarPromptCard docOpens={starPromptDocOpens} onClose={() => setStarPromptDocOpens(null)} />
