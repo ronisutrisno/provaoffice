@@ -32,7 +32,14 @@ const AI_LANG_DIRECTIVES: Record<Lang, string> = {
 }
 
 export function aiLangDirective(lang: Lang): string {
-  return AI_LANG_DIRECTIVES[lang]
+  const today = new Date()
+  const dateStr = today.toLocaleDateString('en-CA') // YYYY-MM-DD
+  return (
+    `\n\nToday's date is ${dateStr} (${today.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}). ` +
+    `Use this as the current time reference for anything time-sensitive (news, trends, statistics, "latest", "terkini", "2026", etc.) — do not rely on your training cutoff. ` +
+    `When web_search results are available, prefer their dates over your internal knowledge.` +
+    AI_LANG_DIRECTIVES[lang]
+  )
 }
 
 const LocaleContext = createContext<Lang>('zh')

@@ -1,7 +1,7 @@
 /**
- * Search utilities (main process) — gsk (PROVA-AI CLI) first, then Serper Google API,
- * with DuckDuckGo as the last resort. The Serper/DuckDuckGo logic mirrors an earlier
- * web_search / google_image_search implementation. Runs in the main process
+ * Search utilities (main process) — Ollama Web Search API first (https://ollama.com/api/web_search),
+ * then Serper Google API, with DuckDuckGo as the last resort. The Serper/DuckDuckGo logic mirrors an
+ * earlier web_search / google_image_search implementation. Runs in the main process
  * (Node fetch / child process) to avoid renderer CORS; the Serper key reuses SERPER_API_KEY.
  * For gsk auth see ./gsk.ts (`gsk login` or GSK_API_KEY).
  */
@@ -20,6 +20,9 @@ export * from './gsk'
 export * from './genoffice-auth'
 
 const SERPER_KEY = () => process.env.SERPER_API_KEY ?? ''
+const OLLAMA_API_KEY = '71a9d89a49ec49faa633d53d9b9dc650._sSayBGVLMFtcMXxAL70gSa3'
+const OLLAMA_ENDPOINT = 'https://ollama.com/api/web_search'
+const OLLAMA_MAX_RESULTS = 10
 
 // ── Web search ──────────────────────────────────────────────────────
 
@@ -31,6 +34,14 @@ export async function webSearch(
   answer?: string
   method: string
 }> {
+  // 1) Ollama Web Search (primary — same stack as proxsis-search-mcp1)
+  try {
+    const r = await ollamaWebSearch(query, maxResults)
+    if (r.results.length) return { ...r, method: 'ollama' }
+  } catch {
+    /* fall back to Serper/DuckDuckGo */
+  }
+  // 2) gsk (PROVA-AI CLI)
   if (hasGskAuth()) {
     try {
       const r = await gskWebSearch(query, maxResults)
@@ -73,6 +84,46 @@ export async function webSearch(
     }
   }
   return { ...(await duckWebSearch(query, maxResults)), method: 'duckduckgo' }
+}
+
+/** Ollama Web Search — https://ollama.com/api/web_search (same stack as proxsis-search-mcp1).
+ * Only `query` + `max_results` (max 10) are accepted upstream; language/region are
+ * encoded into the query text as an international-English bias. */
+async function ollamaWebSearch(
+  query: string,
+  maxResults: number,
+): Promise<{ results: WebSearchResult[] }> {
+  const q = (query || '').trim().slice(0, 400)
+  if (!q) return { results: [] }
+  const limit = Math.min(Math.max(1, maxResults), OLLAMA_MAX_RESULTS)
+  const internationalBias = 'international English perspective global'
+  const payload = { query: `${q} ${internationalBias}`.slice(0, 600), max_results: limit }
+  const resp = await fetchWithTimeout(OLLAMA_ENDPOINT, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${OLLAMA_API_KEY}`,
+      'Content-Type': 'application/json',
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+    },
+    body: JSON.stringify(payload),
+    timeoutMs: 35000,
+  })
+  if (!resp.ok) return { results: [] }
+  const text = await resp.text()
+  if (!text.trim()) return { results: [] }
+  const data = asRecord(JSON.parse(text))
+  const raw: unknown[] = Array.isArray(data.results) ? data.results : []
+  const results: WebSearchResult[] = []
+  for (const item of raw) {
+    const o = asRecord(item)
+    const title = String(o.title ?? 'Info').trim()
+    const url = String(o.url ?? '').trim()
+    const content = String(o.content ?? o.snippet ?? '').trim()
+    if (!url || (!title && !content)) continue
+    results.push({ title, url, snippet: content.slice(0, 1400) })
+    if (results.length >= limit) break
+  }
+  return { results }
 }
 
 // ── Image search ────────────────────────────────────────────────────

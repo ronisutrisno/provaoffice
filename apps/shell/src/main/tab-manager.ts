@@ -192,12 +192,6 @@ export class TabManager {
   openSlidesTab(openPath?: string): string {
     const view = createSlidesView(openPath)
     const id = `t${this.nextId++}`
-    view.webContents.on('crashed', (e, code) => console.error(`[slides] WebContents CRASHED code=${code}`))
-    view.webContents.on('render-process-gone', (e, details) => console.error(`[slides] render-process-gone reason=${details.reason}`))
-    view.webContents.on('did-fail-load', (e, code, desc) => console.error(`[slides] did-fail-load code=${code} desc=${desc}`))
-    view.webContents.on('console-message', (e, level, message, line, sourceId) => {
-      console.log(`[slides:console] ${message} (${sourceId}:${line})`)
-    })
     this.shellWindow.contentView.addChildView(view)
     view.setVisible(false)
     this.trackHtmlFullScreen(id, view)

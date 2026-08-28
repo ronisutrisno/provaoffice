@@ -1,5 +1,5 @@
 /**
- * Wrapper around gsk (PROVA-AI CLI, @PROVA-AI/cli) — search / image generation /
+ * Wrapper around gsk (PROVA-AI CLI, @genspark/cli) — search / image generation /
  * media analysis / upload / transcription.
  *
  * Execution: the main process spawns the CLI's JS entry with
@@ -35,19 +35,19 @@ const MAX_BUFFER = 32 * 1024 * 1024
 
 let cachedEntry: string | null | undefined
 
-/** JS entry of @PROVA-AI/cli (null if not found). Can be overridden via GSK_CLI_PATH. */
+/** JS entry of @genspark/cli (null if not found). Can be overridden via GSK_CLI_PATH. */
 export function resolveGskEntry(): string | null {
   if (process.env.GSK_CLI_PATH) return process.env.GSK_CLI_PATH
   if (cachedEntry !== undefined) return cachedEntry
   try {
     const require = createRequire(import.meta.url)
-    cachedEntry = require.resolve('@PROVA-AI/cli/dist/index.js')
+    cachedEntry = require.resolve('@genspark/cli/dist/index.js')
   } catch {
     // The packaged app has no node_modules; electron-builder extraResources
     // copies the CLI into Resources/gsk/
     const resourcesPath = (process as { resourcesPath?: string }).resourcesPath
     const packed = resourcesPath
-      ? join(resourcesPath, 'gsk', 'node_modules', '@PROVA-AI', 'cli', 'dist', 'index.js')
+      ? join(resourcesPath, 'gsk', 'node_modules', '@genspark', 'cli', 'dist', 'index.js')
       : null
     cachedEntry = packed && existsSync(packed) ? packed : null
   }
@@ -172,7 +172,7 @@ export function parseGskOutput(stdout: string): unknown {
 
 function runGsk(args: string[], timeoutMs: number, signal?: AbortSignal): Promise<unknown> {
   const entry = resolveGskEntry()
-  if (!entry) return Promise.reject(new Error('@PROVA-AI/cli is not installed'))
+  if (!entry) return Promise.reject(new Error('@genspark/cli is not installed'))
   // inject the resolved key so the CLI bills the same identity as our direct HTTP calls
   const key = gskApiKey()
   return new Promise((resolve, reject) => {

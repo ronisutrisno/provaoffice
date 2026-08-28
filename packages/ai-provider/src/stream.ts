@@ -720,30 +720,47 @@ async function openAiCompatibleTurn(
     wd.touch()
     cb.onActivity?.()
   }
-  const response = await aiFetch(`${baseUrl.replace(/\/$/, '')}/chat/completions`, {
-    method: 'POST',
-    signal: wd.signal,
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${config.apiKey}`,
-      ...gensparkAttributionHeaders(baseUrl),
-    },
-    body: JSON.stringify({
-      model: config.model,
-      max_tokens: maxTokens,
-      messages: openAiMessages(system, messages),
-      ...(tools.length > 0
-        ? {
-            tools: tools.map((t) => ({
-              type: 'function',
-              function: { name: t.name, description: t.description, parameters: t.inputSchema },
-            })),
-          }
-        : {}),
-      temperature: 0.3,
-      stream: true,
-    }),
-  })
+  // Retry with exponential backoff on 429 (rate limit) — the agent loop fires many
+  // sequential LLM calls (one per tool round), which trips upstream rate limits.
+  const MAX_ATTEMPTS = 3
+  let attempt = 0
+  let response: Response | null = null
+  while (attempt < MAX_ATTEMPTS) {
+    const resp = await aiFetch(`${baseUrl.replace(/\/$/, '')}/chat/completions`, {
+      method: 'POST',
+      signal: wd.signal,
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${config.apiKey}`,
+        ...gensparkAttributionHeaders(baseUrl),
+      },
+      body: JSON.stringify({
+        model: config.model,
+        max_tokens: maxTokens,
+        messages: openAiMessages(system, messages),
+        ...(tools.length > 0
+          ? {
+              tools: tools.map((t) => ({
+                type: 'function',
+                function: { name: t.name, description: t.description, parameters: t.inputSchema },
+              })),
+            }
+          : {}),
+        temperature: 0.3,
+        stream: true,
+      }),
+    })
+    if (resp.status === 429 && attempt < MAX_ATTEMPTS - 1) {
+      const retryAfter = Number(resp.headers.get('retry-after') ?? '0') || 0
+      const delay = Math.max(retryAfter * 1000, 1500 * 2 ** attempt)
+      await new Promise((r) => setTimeout(r, delay))
+      attempt++
+      continue
+    }
+    response = resp
+    break
+  }
+  if (!response) throw new Error('HTTP 429: request rate limited (retries exhausted)')
   // headers arrived: ping the renderer watchdog too, or a slow first chunk could trip it
   onBytes()
   if (!response.ok || !response.body) {

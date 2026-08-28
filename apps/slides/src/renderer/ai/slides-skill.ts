@@ -246,6 +246,14 @@ When the user asks to create or generate a presentation, follow these steps:
 - Always start with create_presentation, end with add_closing.
 - Keep bullet points short (1-2 lines each).
 - For stats layout, use real numbers from web_search.
+
+## Web search budget (IMPORTANT)
+- Each web_search call returns rich, dense results (title + URL + long snippet per hit).
+- Do NOT loop web_search repeatedly. At most 2-3 web_search calls per presentation:
+  1. One broad search for the topic overview.
+  2. One targeted search for specific figures/statistics you still need.
+- After 2-3 searches, stop searching and build the deck from what you have.
+- Combine multiple questions into a single query instead of issuing several narrow searches.
 `
 
 

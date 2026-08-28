@@ -221,13 +221,13 @@ export const aiStrings = defineStrings({
     aiOpenAssistant: 'Open AI assistant',
     aiFactCheckBtn: 'AI Fact Check',
     aiFactCheckPrompt:
-      'Fact-check this deck: verify the figures, dates, names, and claims, then point out and correct any errors',
+      'Fact-check this deck: use web_search to verify the figures, dates, names, and claims on the slides, then point out and correct any errors on the slides',
     aiImageBtn: 'AI Image',
     aiImagePrompt:
-      "Generate an image that matches this slide's content and insert it in a suitable spot on the slide",
+      "Find an image matching this slide's content using image_search (English keywords), then insert it in a suitable spot on the slide with insert_web_image",
     aiBeautifyBtn: 'AI Beautify',
     aiBeautifyPrompt:
-      'Beautify this slide: improve the layout, colors, and typography to make it look more professional',
+      'Beautify this slide: use read_slide to inspect the elements, then execute_slide_script to improve the layout, position, size, colors, and typography to make it look more professional',
     aiSwitchModel: 'Switch AI model',
     aiNewChat: 'New chat',
     aiCollapsePanel: 'Collapse panel',
@@ -1645,13 +1645,13 @@ export const aiStrings = defineStrings({
     aiOpenAssistant: 'Buka asisten AI',
     aiFactCheckBtn: 'Cek Fakta AI',
     aiFactCheckPrompt:
-      'Periksa fakta dek ini: verifikasi angka, tanggal, nama, dan klaim, lalu tunjukkan dan perbaiki kesalahannya',
+      'Periksa fakta dek ini: gunakan web_search untuk memverifikasi angka, tanggal, nama, dan klaim pada slide, lalu tunjukkan dan perbaiki kesalahannya di slide',
     aiImageBtn: 'Gambar AI',
     aiImagePrompt:
-      'Buat gambar yang sesuai dengan isi slide ini dan sisipkan di posisi yang tepat pada slide',
+      'Cari gambar yang sesuai dengan isi slide ini menggunakan image_search (kata kunci bahasa Inggris), lalu sisipkan ke posisi yang tepat pada slide dengan insert_web_image',
     aiBeautifyBtn: 'Percantik AI',
     aiBeautifyPrompt:
-      'Percantik slide ini: perbaiki tata letak, warna, dan tipografi agar tampak lebih profesional',
+      'Percantik slide ini: gunakan read_slide untuk melihat elemen, lalu execute_slide_script untuk memperbaiki tata letak, posisi, ukuran, warna, dan tipografi elemen agar tampak lebih profesional',
     aiSwitchModel: 'Ganti model AI',
     aiNewChat: 'Obrolan baru',
     aiCollapsePanel: 'Ciutkan panel',

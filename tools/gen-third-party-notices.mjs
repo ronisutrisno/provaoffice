@@ -69,8 +69,8 @@ const LICENSE_PATH = { electron: 'dist/LICENSE' }
 const NOTE = {
   '@fluentui/react-icons':
     'Copyright (c) Microsoft Corporation. Licensed under the MIT License.\nhttps://github.com/microsoft/fluentui-system-icons',
-  '@PROVA-AI/cli':
-    'Copyright (c) PROVA-AI. Licensed under the MIT License.\nhttps://www.npmjs.com/package/@PROVA-AI/cli',
+  '@genspark/cli':
+    'Copyright (c) PROVA-AI. Licensed under the MIT License.\nhttps://www.npmjs.com/package/@genspark/cli',
 }
 
 /** SPDX strings that need a word on which side of a dual license we take */

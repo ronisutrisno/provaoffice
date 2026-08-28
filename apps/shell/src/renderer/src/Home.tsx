@@ -426,8 +426,9 @@ function ProjectPanel({ projects, selectedId, onSelect, onRefresh }: ProjectPane
 // ── Account entry (bottom-left) ──────────────────────────
 // AI Provider settings entry. Clicking opens the settings modal.
 
-function AccountEntry() {
+function AccountEntry({ onStatusChange }: { onStatusChange?: (s: AccountStatus | null) => void }) {
   const [settingsOpen, setSettingsOpen] = useState(false)
+  void onStatusChange
 
   return (
     <div className="account-entry">
@@ -1847,6 +1848,10 @@ export function Home() {
         )}
 
         <AccountEntry onStatusChange={handleAccountStatus} />
+        <div className="sidebar-version">
+          <div>Developed by Proxsis-AI Research</div>
+          <div>Version: Beta-01.20260825</div>
+        </div>
       </aside>
 
       {selectedProjectId ? (

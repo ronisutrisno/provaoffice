@@ -39,8 +39,8 @@ const includeMacX64 = process.env.PROVAOffice_MAC_X64 === '1'
 // exits 0 on a missing extraResources source, so without this check the
 // installer would silently ship without the Chromium license.
 for (const rel of [
-  '../../node_modules/@PROVA-AI/cli',
-  '../../node_modules/@PROVA-AI/cli/node_modules/commander',
+  '../../node_modules/@genspark/cli',
+  '../../node_modules/@genspark/cli/node_modules/commander',
   '../../node_modules/ws',
   '../../node_modules/electron/dist/LICENSES.chromium.html',
   '../../node_modules/@embedpdf/pdfium/dist/pdfium.wasm',
@@ -154,11 +154,11 @@ const config = {
       to: 'wasm/hb-subset.wasm',
     },
     {
-      from: '../../node_modules/@PROVA-AI/cli',
-      to: 'gsk/node_modules/@PROVA-AI/cli',
+      from: '../../node_modules/@genspark/cli',
+      to: 'gsk/node_modules/@genspark/cli',
     },
     {
-      from: '../../node_modules/@PROVA-AI/cli/node_modules/commander',
+      from: '../../node_modules/@genspark/cli/node_modules/commander',
       to: 'gsk/node_modules/commander',
     },
     {
@@ -254,7 +254,7 @@ const config = {
     ],
     extraResources: [
       {
-        from: '../sheets/native/xlsx-engine/target/x86_64-pc-windows-gnu/release/xlsx-sidecar.exe',
+        from: '../sheets/native/xlsx-engine/target/release/xlsx-sidecar.exe',
         to: 'native/xlsx-sidecar.exe',
       },
     ],
