@@ -160,6 +160,7 @@ import {
   setSlidesShowBleed,
   slidesFileRenamed,
 } from '../../../slides/src/main/slides-main'
+import { configureFlowsRuntime } from '../../../flows/src/main/flows-main'
 import {
   configurePdfRuntime,
   flushPdfSave,
@@ -244,6 +245,9 @@ const PDF_OUT = app.isPackaged
 const MARKDOWN_OUT = app.isPackaged
   ? join(process.resourcesPath, 'modules', 'markdown')
   : join(APPS_ROOT, 'markdown', 'out')
+const FLOWS_OUT = app.isPackaged
+  ? join(process.resourcesPath, 'modules', 'flows')
+  : join(APPS_ROOT, 'flows', 'out')
 const SIDECAR_BIN = app.isPackaged
   ? join(process.resourcesPath, 'native', SIDECAR_EXE)
   : join(APPS_ROOT, 'sheets', 'native', 'xlsx-engine', 'target', 'release', SIDECAR_EXE)
@@ -274,6 +278,11 @@ configureMarkdownRuntime({
   preloadPath: join(MARKDOWN_OUT, 'preload', 'index.js'),
   rendererUrl: process.env.MARKDOWN_RENDERER_URL,
   rendererFile: join(MARKDOWN_OUT, 'renderer', 'index.html'),
+})
+configureFlowsRuntime({
+  preloadPath: join(FLOWS_OUT, 'preload', 'index.js'),
+  rendererDevUrl: process.env.FLOWS_RENDERER_URL,
+  rendererFilePath: join(FLOWS_OUT, 'renderer', 'index.html'),
 })
 
 // ---- UI language ----
@@ -392,6 +401,7 @@ const tMain = createI18n({
     untitledDoc: '未命名文档',
     untitledDeck: '未命名演示文稿',
     untitledMarkdown: '未命名 Markdown',
+    untitledFlow: '未命名 Flow',
     menuNewSlide: 'AI Slides',
     menuNewMarkdown: 'AI Markdown',
     menuExportPdf: '导出为 PDF…',
@@ -446,6 +456,7 @@ const tMain = createI18n({
     untitledDoc: 'Untitled Document',
     untitledDeck: 'Untitled Presentation',
     untitledMarkdown: 'Untitled Markdown',
+    untitledFlow: 'Untitled Flow',
     menuNewSlide: 'AI Slides',
     menuNewMarkdown: 'AI Markdown',
     menuExportPdf: 'Export as PDF…',
@@ -504,6 +515,7 @@ const tMain = createI18n({
     untitledDoc: '無題のドキュメント',
     untitledDeck: '無題のプレゼンテーション',
     untitledMarkdown: '無題の Markdown',
+    untitledFlow: '無題の Flow',
     menuNewSlide: 'AI Slides',
     menuNewMarkdown: 'AI Markdown',
     menuExportPdf: 'PDF として書き出す…',
@@ -562,6 +574,7 @@ const tMain = createI18n({
     untitledDoc: '제목 없는 문서',
     untitledDeck: '제목 없는 프레젠테이션',
     untitledMarkdown: '제목 없는 Markdown',
+    untitledFlow: '제목 없는 Flow',
     menuNewSlide: 'AI Slides',
     menuNewMarkdown: 'AI Markdown',
     menuExportPdf: 'PDF로 내보내기…',
@@ -619,6 +632,7 @@ const tMain = createI18n({
     untitledDoc: 'Document sans titre',
     untitledDeck: 'Présentation sans titre',
     untitledMarkdown: 'Markdown sans titre',
+    untitledFlow: 'Flow sans titre',
     menuNewSlide: 'AI Slides',
     menuNewMarkdown: 'AI Markdown',
     menuExportPdf: 'Exporter en PDF…',
@@ -677,6 +691,7 @@ const tMain = createI18n({
     untitledDoc: 'Unbenanntes Dokument',
     untitledDeck: 'Unbenannte Präsentation',
     untitledMarkdown: 'Unbenanntes Markdown',
+    untitledFlow: 'Unbenanntes Flow',
     menuNewSlide: 'AI Slides',
     menuNewMarkdown: 'AI Markdown',
     menuExportPdf: 'Als PDF exportieren…',
@@ -735,6 +750,7 @@ const tMain = createI18n({
     untitledDoc: 'Documento sin título',
     untitledDeck: 'Presentación sin título',
     untitledMarkdown: 'Markdown sin título',
+    untitledFlow: 'Flow sin título',
     menuNewSlide: 'AI Slides',
     menuNewMarkdown: 'AI Markdown',
     menuExportPdf: 'Exportar como PDF…',
@@ -793,6 +809,7 @@ const tMain = createI18n({
     untitledDoc: 'เอกสารไม่มีชื่อ',
     untitledDeck: 'งานนำเสนอไม่มีชื่อ',
     untitledMarkdown: 'Markdown ไม่มีชื่อ',
+    untitledFlow: 'Flow ไม่มีชื่อ',
     menuNewSlide: 'AI Slides',
     menuNewMarkdown: 'AI Markdown',
     menuExportPdf: 'ส่งออกเป็น PDF…',
@@ -849,6 +866,7 @@ const tMain = createI18n({
     untitledDoc: 'Dokumen tanpa judul',
     untitledDeck: 'Presentasi tanpa judul',
     untitledMarkdown: 'Markdown tanpa judul',
+    untitledFlow: 'Flow tanpa judul',
     menuNewSlide: 'AI Slides',
     menuNewMarkdown: 'AI Markdown',
     menuExportPdf: 'Ekspor sebagai PDF…',
@@ -907,6 +925,7 @@ const tMain = createI18n({
     untitledDoc: 'Документ без названия',
     untitledDeck: 'Презентация без названия',
     untitledMarkdown: 'Markdown без названия',
+    untitledFlow: 'Flow без названия',
     menuNewSlide: 'AI Slides',
     menuNewMarkdown: 'AI Markdown',
     menuExportPdf: 'Экспортировать в PDF…',
@@ -965,6 +984,7 @@ const tMain = createI18n({
     untitledDoc: 'مستند بدون عنوان',
     untitledDeck: 'عرض تقديمي بدون عنوان',
     untitledMarkdown: 'Markdown بدون عنوان',
+    untitledFlow: 'Flow بدون عنوان',
     menuNewSlide: 'AI Slides',
     menuNewMarkdown: 'AI Markdown',
     menuExportPdf: 'تصدير بتنسيق PDF…',
@@ -1021,6 +1041,7 @@ const tMain = createI18n({
     untitledDoc: 'Documento sem título',
     untitledDeck: 'Apresentação sem título',
     untitledMarkdown: 'Markdown sem título',
+    untitledFlow: 'Flow sem título',
     menuNewSlide: 'AI Slides',
     menuNewMarkdown: 'AI Markdown',
     menuExportPdf: 'Exportar como PDF…',
@@ -1079,6 +1100,7 @@ const tMain = createI18n({
     untitledDoc: 'Documento senza titolo',
     untitledDeck: 'Presentazione senza titolo',
     untitledMarkdown: 'Markdown senza titolo',
+    untitledFlow: 'Flow senza titolo',
     menuNewSlide: 'AI Slides',
     menuNewMarkdown: 'AI Markdown',
     menuExportPdf: 'Esporta come PDF…',
@@ -1137,6 +1159,7 @@ const tMain = createI18n({
     untitledDoc: 'Dokument bez tytułu',
     untitledDeck: 'Prezentacja bez tytułu',
     untitledMarkdown: 'Markdown bez tytułu',
+    untitledFlow: 'Flow bez tytułu',
     menuNewSlide: 'AI Slides',
     menuNewMarkdown: 'AI Markdown',
     menuExportPdf: 'Eksportuj jako PDF…',
@@ -1195,6 +1218,7 @@ const tMain = createI18n({
     untitledDoc: 'Naamloos document',
     untitledDeck: 'Naamloze presentatie',
     untitledMarkdown: 'Naamloos Markdown',
+    untitledFlow: 'Naamloos Flow',
     menuNewSlide: 'AI Slides',
     menuNewMarkdown: 'AI Markdown',
     menuExportPdf: 'Exporteren als PDF…',
@@ -1253,6 +1277,7 @@ const tMain = createI18n({
     untitledDoc: 'Dokumen tanpa tajuk',
     untitledDeck: 'Persembahan tanpa tajuk',
     untitledMarkdown: 'Markdown tanpa tajuk',
+    untitledFlow: 'Flow tanpa tajuk',
     menuNewSlide: 'AI Slides',
     menuNewMarkdown: 'AI Markdown',
     menuExportPdf: 'Eksport sebagai PDF…',
@@ -1311,6 +1336,7 @@ const tMain = createI18n({
     untitledDoc: 'מסמך ללא שם',
     untitledDeck: 'מצגת ללא שם',
     untitledMarkdown: 'Markdown ללא שם',
+    untitledFlow: 'Flow ללא שם',
     menuNewSlide: 'AI Slides',
     menuNewMarkdown: 'AI Markdown',
     menuExportPdf: 'ייצוא כ-PDF…',
@@ -1366,6 +1392,7 @@ const tMain = createI18n({
     untitledDoc: 'बिना शीर्षक दस्तावेज़',
     untitledDeck: 'बिना शीर्षक प्रस्तुति',
     untitledMarkdown: 'अनाम Markdown',
+    untitledFlow: 'अनाम Flow',
     menuNewSlide: 'AI Slides',
     menuNewMarkdown: 'AI Markdown',
     menuExportPdf: 'PDF के रूप में निर्यात…',
@@ -1424,6 +1451,7 @@ const tMain = createI18n({
     untitledDoc: '未命名文件',
     untitledDeck: '未命名簡報',
     untitledMarkdown: '未命名 Markdown',
+    untitledFlow: '未命名 Flow',
     menuNewSlide: 'AI Slides',
     menuNewMarkdown: 'AI Markdown',
     menuExportPdf: '匯出為 PDF…',
@@ -1571,7 +1599,9 @@ function createShellWindow(): void {
           ? tm('untitledDeck')
           : kind === 'markdown'
             ? tm('untitledMarkdown')
-            : tm('untitledSheet'),
+            : kind === 'flows'
+              ? tm('untitledFlow')
+              : tm('untitledSheet'),
   )
   tabManager = manager
 
@@ -1861,6 +1891,14 @@ function newMarkdownTab(): void {
   }
 }
 
+function newFlowTab(): void {
+  try {
+    tabManager?.openFlowsTab()
+  } catch (err) {
+    surfaceNewTabError(err)
+  }
+}
+
 /**
  * The sheets renderer subscribes to menu actions only after Univer finishes
  * mounting (seconds on cold start), so a single 'open' can fire into the
@@ -1990,6 +2028,10 @@ function registerHomeIpc(): void {
       pendingNewFileProject.set('markdown', opts.projectId)
     }
     newMarkdownTab()
+  })
+
+  ipcMain.handle(HOME_CHANNELS.newFlow, () => {
+    newFlowTab()
   })
 
   ipcMain.handle(HOME_CHANNELS.removeRecent, (_event, paths: unknown) => {
@@ -2241,6 +2283,7 @@ const TAB_MENU_ICON: Record<TabKind, keyof MenuIconSet> = {
   slides: 'pptx',
   pdf: 'pdf',
   markdown: 'md',
+  flows: 'md',
 }
 
 // tab views see neither DOM events nor a focus change when the user clicks the
@@ -2311,6 +2354,10 @@ function registerTabsIpc(): void {
         icon: menuIcons().md,
         click: () => newMarkdownTab(),
       },
+      {
+        label: 'AI Flow',
+        click: () => newFlowTab(),
+      },
       { type: 'separator' },
       { label: tm('menuOpen'), click: () => void openFileViaDialog() },
     ])
@@ -2354,6 +2401,7 @@ function buildHomeMenu(): void {
         },
         { label: tm('menuNewSlide'), click: () => newSlideTab() },
         { label: tm('menuNewMarkdown'), click: () => newMarkdownTab() },
+        { label: 'AI Flow', click: () => newFlowTab() },
         { type: 'separator' },
         {
           label: tm('menuOpen'),
@@ -2703,6 +2751,7 @@ function installDockMenu(): void {
       },
       { label: tm('menuNewSlide'), click: () => newSlideTab() },
       { label: tm('menuNewMarkdown'), click: () => newMarkdownTab() },
+      { label: 'AI Flow', click: () => newFlowTab() },
     ]),
   )
 }

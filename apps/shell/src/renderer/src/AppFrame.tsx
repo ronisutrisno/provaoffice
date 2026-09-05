@@ -1,7 +1,5 @@
 import { useEffect, useState } from 'react'
 import { Home } from './Home'
-import { Onboarding } from './Onboarding'
-import { StarPromptCard } from './StarPromptCard'
 import { TabBar } from './TabBar'
 
 interface AppFrameProps {
@@ -10,9 +8,8 @@ interface AppFrameProps {
 }
 
 export function AppFrame({ initialOnboardingSeen }: AppFrameProps) {
+  void initialOnboardingSeen
   const [homeActive, setHomeActive] = useState(true)
-  const [showOnboarding, setShowOnboarding] = useState(!initialOnboardingSeen)
-  const [starPromptDocOpens, setStarPromptDocOpens] = useState<number | null>(null)
 
   useEffect(() => {
     const applyTabs = (tabs: Awaited<ReturnType<typeof window.aiOfficeTabs.list>>) => {
@@ -23,35 +20,12 @@ export function AppFrame({ initialOnboardingSeen }: AppFrameProps) {
     return window.aiOfficeTabs.onChanged(applyTabs)
   }, [])
 
-  // The "star us" invitation is decided (and counted as shown) by the main
-  // process; ask once per session, and never while onboarding is up — a
-  // first-run user can't have met the value threshold anyway.
-  useEffect(() => {
-    if (showOnboarding) return
-    let alive = true
-    void window.aiOffice.starPromptShouldShow?.().then((result) => {
-      if (alive && result.show) setStarPromptDocOpens(result.docOpens)
-    })
-    return () => {
-      alive = false
-    }
-  }, [showOnboarding])
-
-  const finishOnboarding = () => {
-    setShowOnboarding(false)
-    void window.aiOffice.setOnboardingSeen().catch(() => {})
-  }
-
   return (
     <div className="app-frame">
       <TabBar />
       <div className="app-frame-content" style={{ visibility: homeActive ? 'visible' : 'hidden' }}>
         <Home />
       </div>
-      {showOnboarding && homeActive && <Onboarding onDone={finishOnboarding} />}
-      {starPromptDocOpens !== null && !showOnboarding && homeActive && (
-        <StarPromptCard docOpens={starPromptDocOpens} onClose={() => setStarPromptDocOpens(null)} />
-      )}
     </div>
   )
 }

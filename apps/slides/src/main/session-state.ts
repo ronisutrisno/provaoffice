@@ -172,6 +172,9 @@ export function carryHistoryForReplacement(
   replacement.redoStack = previous.redoStack
   replacement.historyBatch = previous.historyBatch
   replacement.aiSnapshots = previous.aiSnapshots
+  // Carry the draft path too: without it, every full-deck replace creates a NEW
+  // numbered draft file (-2, -3, …) instead of overwriting the same one.
+  replacement.path = previous.path
   scheduleHistoryNotify(replacement)
 }
 

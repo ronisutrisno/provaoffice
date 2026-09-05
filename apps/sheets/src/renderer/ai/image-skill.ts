@@ -63,28 +63,21 @@ export function createImageSkill(): AgentSkill {
             summary: t('aiToolImageSearch'),
           }
         }
-        const pixabayKey = '55586367-a4b8c80ba306e0b4fb4afca94'
         const maxResults = Number(call.input.maxResults) || 8
         try {
-          const url = `https://pixabay.com/api/?key=${encodeURIComponent(pixabayKey)}&q=${encodeURIComponent(query)}&image_type=photo&per_page=${maxResults}&safesearch=true`
-          const resp = await fetch(url)
-          if (!resp.ok) return { output: `Pixabay API error: ${resp.status}`, isError: true, summary: t('aiToolImageSearch') }
-          const data = await resp.json()
-          const hits = (data.hits ?? []) as Array<{ webformatURL: string; imageWidth: number; imageHeight: number; tags: string }>
-          const images = hits.map((h) => ({
-            title: h.tags,
-            imageUrl: h.webformatURL,
-            width: h.imageWidth,
-            height: h.imageHeight,
-          }))
-          const lines = images.map(
+          // search runs in the main process (Pixabay primary) — the renderer CSP blocks direct fetch
+          const r = await window.desktopApi.imageSearch(query, maxResults)
+          if (r.method === 'error') {
+            return { output: `image search failed: ${r.error ?? 'unknown error'}`, isError: true, summary: t('aiToolImageSearch') }
+          }
+          const lines = r.images.map(
             (image, index) =>
               `${index + 1}. ${image.title || '(untitled)'} [${image.width ?? '?'}x${image.height ?? '?'}]\n   ${image.imageUrl}`,
           )
           return {
             output: lines.join('\n') || '(no images)',
             mutated: false,
-            summary: t('aiToolImageSearchDone', { query, count: images.length }),
+            summary: t('aiToolImageSearchDone', { query, count: r.images.length }),
           }
         } catch (err) {
           return { output: `image search failed: ${err}`, isError: true, summary: t('aiToolImageSearch') }

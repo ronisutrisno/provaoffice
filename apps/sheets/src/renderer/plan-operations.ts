@@ -6,7 +6,7 @@
  * Extracted from App.tsx; App-scope state comes in through PlanContext.
  */
 import { planPrompt } from '../ai/deterministic-planner'
-import { parseAddress, parseRange, rangeCellCount } from '../domain/cell-address'
+import { formatAddress, parseAddress, parseRange, rangeCellCount } from '../domain/cell-address'
 import { CHART_EDIT_TYPES, chartDataFromValues } from '../domain/chart-visual'
 import type { InMemoryWorkbookAdapter } from '../domain/in-memory-workbook'
 import {
@@ -39,6 +39,101 @@ export interface PlanContext {
   }
   readonly setPreview: (plan: ChangePlan | null) => void
   readonly autoApplySafePlan: (plan: ChangePlan) => Promise<ApplyOutcome>
+}
+
+// ── Deterministic table beautifier ─────────────────────────────────────
+// Mirrors the dev-stack excel_format.py idea: when the model writes a fresh
+// table block (content only, no explicit styling), the app applies a
+// consistent professional look automatically — header bold + fill, thin
+// borders, zebra striping. Styling only: it never shifts rows/columns or
+// rewrites values, so formula references and computed results stay intact.
+
+const BEAUTIFY_HEADER_FILL = '44546A'
+const BEAUTIFY_HEADER_FONT = 'FFFFFF'
+const BEAUTIFY_BORDER = 'BFBFBF'
+const BEAUTIFY_ZEBRA = 'F2F2F2'
+/** Only beautify blocks that look like a real table (>=2 rows and >=2 cols). */
+const BEAUTIFY_MIN_ROWS = 2
+const BEAUTIFY_MIN_COLS = 2
+/** Cap zebra rows so a huge table doesn't balloon the plan with format ops. */
+const BEAUTIFY_MAX_ZEBRA_ROWS = 200
+
+function beautifyRange(r1: number, c1: number, r2: number, c2: number): string {
+  return `${formatAddress(r1, c1)}:${formatAddress(r2, c2)}`
+}
+
+/**
+ * Add deterministic header/border/zebra styling to freshly written table
+ * blocks. Returns a new plan (or the same plan when nothing qualifies).
+ * Only fires when the model wrote content WITHOUT any format_range for that
+ * sheet in the same batch — i.e. it left styling to the app.
+ */
+export function beautifyTablePlan(plan: ChangePlan): ChangePlan {
+  if (plan.cellChanges.length === 0) return plan
+  const styledSheets = new Set(plan.formatChanges.map((f) => f.sheetId))
+  const bySheet = new Map<string, { r1: number; c1: number; r2: number; c2: number; count: number }>()
+  for (const change of plan.cellChanges) {
+    if (styledSheets.has(change.sheetId)) continue
+    const cell = parseAddress(change.address)
+    const box = bySheet.get(change.sheetId)
+    if (box) {
+      box.r1 = Math.min(box.r1, cell.row)
+      box.c1 = Math.min(box.c1, cell.column)
+      box.r2 = Math.max(box.r2, cell.row)
+      box.c2 = Math.max(box.c2, cell.column)
+      box.count++
+    } else {
+      bySheet.set(change.sheetId, {
+        r1: cell.row,
+        c1: cell.column,
+        r2: cell.row,
+        c2: cell.column,
+        count: 1,
+      })
+    }
+  }
+  const additions: ChangePlan['formatChanges'][number][] = []
+  for (const [sheetId, box] of bySheet) {
+    const rows = box.r2 - box.r1 + 1
+    const cols = box.c2 - box.c1 + 1
+    if (rows < BEAUTIFY_MIN_ROWS || cols < BEAUTIFY_MIN_COLS) continue
+    // Header = first written row; data = the rest.
+    additions.push({
+      sheetId,
+      range: beautifyRange(box.r1, box.c1, box.r1, box.c2),
+      format: {
+        bold: true,
+        fillColor: BEAUTIFY_HEADER_FILL,
+        fontColor: BEAUTIFY_HEADER_FONT,
+        horizontalAlign: 'center',
+        border: { type: 'all', color: BEAUTIFY_BORDER },
+      },
+      label: 'Auto-format table header',
+    })
+    if (rows > 1) {
+      additions.push({
+        sheetId,
+        range: beautifyRange(box.r1 + 1, box.c1, box.r2, box.c2),
+        format: { border: { type: 'all', color: BEAUTIFY_BORDER } },
+        label: 'Auto-format table borders',
+      })
+      // Zebra striping on even data rows (relative to the block), capped.
+      let zebraCount = 0
+      for (let r = box.r1 + 1; r <= box.r2 && zebraCount < BEAUTIFY_MAX_ZEBRA_ROWS; r++) {
+        if ((r - box.r1) % 2 === 0) {
+          additions.push({
+            sheetId,
+            range: beautifyRange(r, box.c1, r, box.c2),
+            format: { fillColor: BEAUTIFY_ZEBRA },
+            label: 'Auto-format zebra row',
+          })
+          zebraCount++
+        }
+      }
+    }
+  }
+  if (additions.length === 0) return plan
+  return { ...plan, formatChanges: [...plan.formatChanges, ...additions] }
 }
 
 /** shared by the agent's propose_operations tool; identical validation and
@@ -436,11 +531,11 @@ export function proposeOperations(
           return { ok: false, error: 'That cell is still streaming in — try again in a moment.' }
         }
       }
-      const plan = buildLazyChangePlan(batch, reader, (id) => {
+      const plan = beautifyTablePlan(buildLazyChangePlan(batch, reader, (id) => {
         const sheet = workbook.getSheetBySheetId(id)
         if (!sheet) throw new Error(`Unknown sheet: ${id}`)
         return sheet.getSheetName()
-      })
+      }))
       ctx.lazyPreviewRef.current = { sessionId: state.file.sessionId, sheetId, plan }
       ctx.setPreview(plan)
       // All plans auto-apply (undo covers them); the caller awaits `applied`
@@ -455,13 +550,15 @@ export function proposeOperations(
   }
   try {
     const snapshot = ctx.adapterRef.current.getSnapshot()
-    const plan = ctx.adapterRef.current.plan({
-      dslVersion: 1,
-      transactionId: `agent-${crypto.randomUUID()}`,
-      baseRevision: snapshot.revision,
-      summary,
-      operations,
-    })
+    const plan = beautifyTablePlan(
+      ctx.adapterRef.current.plan({
+        dslVersion: 1,
+        transactionId: `agent-${crypto.randomUUID()}`,
+        baseRevision: snapshot.revision,
+        summary,
+        operations,
+      }),
+    )
     ctx.setPreview(plan)
     // All plans auto-apply (undo covers them); on failure the preview
     // card stays up so the user can Apply manually.

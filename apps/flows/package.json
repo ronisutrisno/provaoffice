@@ -1,0 +1,40 @@
+{
+  "name": "@prova/flows",
+  "productName": "PROVAOffice Flows",
+  "version": "0.1.0",
+  "license": "Apache-2.0",
+  "private": true,
+  "description": "AI-native flowchart builder: Konva canvas + elkjs auto-layout + agent editing",
+  "main": "out/main/index.js",
+  "scripts": {
+    "dev": "electron-vite dev",
+    "dev:renderer": "vite --config vite.renderer.config.ts",
+    "build": "electron-vite build",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "devDependencies": {
+    "@prova/agent-core": "*",
+    "@prova/ai-provider": "*",
+    "@prova/ai-search": "*",
+    "@prova/electron-utils": "*",
+    "@prova/file-parse": "*",
+    "@prova/i18n": "*",
+    "@prova/ui": "*",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^5.0.4",
+    "electron": "^43.3.0",
+    "electron-vite": "^5.0.0",
+    "elkjs": "^0.9.3",
+    "konva": "^9.3.20",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4",
+    "react-konva": "^19.0.10",
+    "typescript": "^5.9.3",
+    "vite": "^7.3.1",
+    "vitest": "^4.1.0"
+  },
+  "author": "PROVAOffice"
+}

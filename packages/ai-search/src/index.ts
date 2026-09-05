@@ -23,6 +23,7 @@ const SERPER_KEY = () => process.env.SERPER_API_KEY ?? ''
 const OLLAMA_API_KEY = '71a9d89a49ec49faa633d53d9b9dc650._sSayBGVLMFtcMXxAL70gSa3'
 const OLLAMA_ENDPOINT = 'https://ollama.com/api/web_search'
 const OLLAMA_MAX_RESULTS = 10
+const PIXABAY_KEY = '55586367-a4b8c80ba306e0b4fb4afca94'
 
 // ── Web search ──────────────────────────────────────────────────────
 
@@ -120,13 +121,41 @@ async function ollamaWebSearch(
     const url = String(o.url ?? '').trim()
     const content = String(o.content ?? o.snippet ?? '').trim()
     if (!url || (!title && !content)) continue
-    results.push({ title, url, snippet: content.slice(0, 1400) })
+    results.push({ title, url, snippet: content.slice(0, 800) })
     if (results.length >= limit) break
   }
   return { results }
 }
 
 // ── Image search ────────────────────────────────────────────────────
+
+/** Pixabay stock-photo search (main process, Node fetch — not subject to renderer CSP). */
+async function pixabayImageSearch(query: string, maxResults: number): Promise<ImageSearchResult[]> {
+  const q = (query || '').trim()
+  if (!q) return []
+  const url = `https://pixabay.com/api/?key=${PIXABAY_KEY}&q=${encodeURIComponent(q)}&image_type=photo&per_page=${Math.min(Math.max(1, maxResults), 200)}&safesearch=true`
+  const resp = await fetchWithTimeout(url, { timeoutMs: 20000 })
+  if (!resp.ok) return []
+  const data = asRecord(await resp.json())
+  const hits: unknown[] = Array.isArray(data.hits) ? data.hits : []
+  const images: ImageSearchResult[] = []
+  for (const item of hits) {
+    const h = asRecord(item)
+    const imageUrl = String(h.largeImageURL ?? h.webformatURL ?? '')
+    if (!imageUrl) continue
+    const entry: ImageSearchResult = {
+      title: String(h.tags ?? h.prettyName ?? ''),
+      imageUrl,
+      sourceUrl: String(h.pageURL ?? ''),
+      source: 'pixabay',
+    }
+    if (typeof h.imageWidth === 'number') entry.width = h.imageWidth
+    if (typeof h.imageHeight === 'number') entry.height = h.imageHeight
+    images.push(entry)
+    if (images.length >= maxResults) break
+  }
+  return images
+}
 
 export async function imageSearch(
   query: string,
@@ -135,6 +164,13 @@ export async function imageSearch(
   images: ImageSearchResult[]
   method: string
 }> {
+  // 1) Pixabay (primary — free stock photos, safe for embedding)
+  try {
+    const images = await pixabayImageSearch(query, maxResults)
+    if (images.length) return { images, method: 'pixabay' }
+  } catch {
+    /* fall back to gsk/Serper/DuckDuckGo */
+  }
   if (hasGskAuth()) {
     try {
       const images = await gskImageSearch(query, maxResults)

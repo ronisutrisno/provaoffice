@@ -29,6 +29,7 @@ import {
   setActiveSlidesWebContents,
   slidesIsDirty,
 } from '../../../slides/src/main/slides-main'
+import { createFlowsView } from '../../../flows/src/main/flows-main'
 import type { TabKind, TabSummary } from '../shared/tabs-api'
 
 interface TabRecord {
@@ -207,6 +208,23 @@ export class TabManager {
     view.webContents.on('did-finish-load', () => {
       this.shellWindow.webContents.send('tab-ready')
     })
+    return id
+  }
+
+  openFlowsTab(openPath?: string): string {
+    const view = createFlowsView(openPath)
+    const id = `t` + this.nextId++
+    this.shellWindow.contentView.addChildView(view)
+    view.setVisible(false)
+    this.trackHtmlFullScreen(id, view)
+    this.tabs.push({
+      id,
+      kind: 'flows',
+      view,
+      title: openPath ? basename(openPath) : this.untitled('flows', 'AI Flow'),
+      filePath: openPath,
+    })
+    this.activateTab(id)
     return id
   }
 

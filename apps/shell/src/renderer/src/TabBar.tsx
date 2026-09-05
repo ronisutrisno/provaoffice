@@ -99,6 +99,17 @@ function MarkdownIcon() {
   )
 }
 
+function FlowIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 240 240" fill="none" aria-hidden="true">
+      <rect x="30" y="24" width="180" height="52" rx="12" stroke="currentColor" strokeWidth="16" />
+      <rect x="30" y="164" width="84" height="52" rx="12" stroke="currentColor" strokeWidth="16" />
+      <rect x="126" y="164" width="84" height="52" rx="12" stroke="currentColor" strokeWidth="16" />
+      <path d="M120 76v44M120 120H72v44M120 120h48v44" stroke="currentColor" strokeWidth="16" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  )
+}
+
 const KIND_ICON: Record<TabSummary['kind'], ReactElement> = {
   home: <HomeIcon />,
   docs: <DocIcon />,
@@ -106,6 +117,7 @@ const KIND_ICON: Record<TabSummary['kind'], ReactElement> = {
   slides: <SlideIcon />,
   pdf: <PdfIcon />,
   markdown: <MarkdownIcon />,
+  flows: <FlowIcon />,
 }
 
 export function TabBar() {

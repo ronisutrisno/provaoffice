@@ -13,9 +13,12 @@ import {
 import { auditSlideLayout } from './layout-audit'
 import { createSlidesSkill, formatSlideDump, type DeckAccess } from './slides-skill'
 
-/** Kill switch: localStorage 'ai-slides-qc' = '0' disables the automatic pass */
+/** QC vision is OFF by default: the deterministic layers (fit:'shrink', layout audit on
+ *  every tool call, golden tests, density limits) already guarantee layout quality, and
+ *  the per-page vision pass costs 1-2 minutes per deck. Opt in via localStorage
+ *  'ai-slides-qc' = '1' for high-stakes decks. */
 export function isQcEnabled(): boolean {
-  return localStorage.getItem('ai-slides-qc') !== '0'
+  return localStorage.getItem('ai-slides-qc') === '1'
 }
 
 /** Cost ceiling per generation run — beyond this the tail pages are skipped (reported to the user) */
@@ -98,6 +101,8 @@ export interface QcPageResult {
   preIssues: number
   postIssues: number
   error?: string
+  /** deterministic audit was clean and the vision pass was skipped (fast path) */
+  skipped?: boolean
 }
 
 export interface QcPageOptions {
@@ -153,6 +158,21 @@ export function qcSlidePage(opts: QcPageOptions): Promise<QcPageResult> {
     })
   }
   const preIssues = auditSlideLayout(slide)
+  // Fast path: the deterministic audit already covers the objective defects the
+  // vision pass fixes (overflow, collision, clipping) — and fit:'shrink' keeps
+  // generated text inside its box. A clean audit means there is nothing the
+  // geometry tools could improve, so skip the expensive vision round-trip.
+  // (Contrast is guarded at generation time by textOn() + the contrast prompt.)
+  if (preIssues.length === 0) {
+    return Promise.resolve({
+      ok: true,
+      edited: false,
+      reply: 'OK',
+      preIssues: 0,
+      postIssues: 0,
+      skipped: true,
+    })
+  }
   const instruction = buildQcInstruction(pageIndex, formatSlideDump(slide), preIssues)
 
   return new Promise((resolve) => {
@@ -171,7 +191,10 @@ export function qcSlidePage(opts: QcPageOptions): Promise<QcPageResult> {
     const loop = new AgentLoop({
       transport,
       skill: createSlideFixSkill(access),
-      // audit feedback inside execute_slide_script output drives at most a couple of fix rounds
+      // Only pages whose deterministic audit flagged issues reach this loop (clean
+      // pages take the fast path), so a higher ceiling here costs little: complex
+      // fixes (resize + re-audit + verify) need ~4-5 rounds, and hitting the cap
+      // mid-fix leaves half-done edits like the main loop's earlier ceiling.
       maxTurns: 6,
       ...(systemSuffix ? { systemSuffix } : {}),
       events: {

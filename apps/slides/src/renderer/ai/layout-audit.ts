@@ -149,6 +149,25 @@ export function auditSlideLayout(slide: RenderSlide): string[] {
     if (issues.length >= MAX_ISSUES) break
   }
 
+  // 4. Mixed bullet structure: literal "•"/"-" markers mixed with plain lines in one
+  //    text box render as an unindented mess (no hanging indent, no visual grouping).
+  //    The fix is structural: split into separate bullet paragraphs or separate boxes.
+  for (const e of entries) {
+    if (!e.hasText || e.type !== 'shape' && e.type !== 'text') continue
+    const node = (slide.nodes.find((n) => n.sourceId === e.id) ?? null) as ShapeRenderNode | null
+    const lines = (node?.text?.lines ?? []).map((l) => l.runs.map((r) => r.text).join('').trim())
+    const nonEmpty = lines.filter(Boolean)
+    if (nonEmpty.length < 3) continue
+    const bulleted = nonEmpty.filter((l) => /^[•·▪◦‣⁃-]\s+/.test(l)).length
+    const plain = nonEmpty.length - bulleted
+    if (bulleted >= 2 && plain >= 2) {
+      issues.push(
+        `Mixed structure: ${label(e)} combines ${bulleted} bullet lines with ${plain} plain lines — split bullets into real bullet paragraphs (hanging indent) and headers into their own text box`,
+      )
+      if (issues.length >= MAX_ISSUES) break
+    }
+  }
+
   return issues.slice(0, MAX_ISSUES)
 }
 

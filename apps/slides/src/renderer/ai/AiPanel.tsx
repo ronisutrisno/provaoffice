@@ -20,6 +20,7 @@ import { extractJsonObject, parseOutlineJson } from './outline-json'
 import { createFilesSkill } from './files-skill'
 import { createElectronTransport } from './transport'
 import { renderSlidesToPngBase64 } from '../export-render'
+import { auditSlideLayout } from './layout-audit'
 import { isQcEnabled, mergeQcPages, qcSlidePage, QC_MAX_PAGES } from './slide-qc'
 import { useI18n, t as tGlobal, aiLangDirective, type TFunc } from '../i18n/locale'
 import { Markdown } from '@prova/ui'
@@ -1168,8 +1169,9 @@ export function AiPanel({
         createSlidesSkill(access),
         createFilesSkill(availableAttachments, (path) => readAttachmentPathsRef.current.add(path)),
       ]),
-      // Page-by-page deck generation needs more tool rounds
-      maxTurns: 24,
+      // Page-by-page deck generation needs more tool rounds; QC finishing touches
+      // (opacity fixes etc.) previously hit the ceiling mid-fix, leaving half-done edits
+      maxTurns: 48,
       events: {
         onText: (text) => patchLastAssistant({ text: stripToolCallXml(text) }),
         onToolStart: (call) => {
@@ -1489,6 +1491,13 @@ export function AiPanel({
     try {
       for (const page of capped) {
         if (controller.signal.aborted) break
+        // Fast path: a clean deterministic audit means the geometry tools have
+        // nothing to improve — skip the screenshot render and the vision call.
+        if (slidesRef.current[page] && auditSlideLayout(slidesRef.current[page]!).length === 0) {
+          lines.push(tGlobal('aiQcPageOk', { n: page + 1 }))
+          patchLastAssistant({ text: renderEntry() })
+          continue
+        }
         const shot = await captureSlideShot(page)
         if (!shot) {
           if (slidesRef.current[page]) lines.push(tGlobal('aiQcPageSkipped', { n: page + 1 }))

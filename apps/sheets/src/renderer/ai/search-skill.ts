@@ -9,7 +9,9 @@ import { t } from '../i18n/locale'
 
 const SEARCH_SYSTEM_PROMPT = `## Web search
 - When you need up-to-date information, data, or facts beyond the workbook, use web_search; never fabricate numbers from memory.
-- When writing search results into the workbook, you must attribute the data source (load_guide: data-attribution first).`
+- When writing search results into the workbook, you must attribute the data source (load_guide: data-attribution first).
+- Search budget: each web_search returns rich, dense results. Do AT MOST 1-2 web_search calls per task — combine all your questions into ONE broad query rather than issuing several narrow searches. After 1-2 searches, stop searching and write from what you have.
+- For template / working-paper / checklist requests, use exactly ONE web_search (or none if you already know the structure) — the goal is a concise deliverable, not an exhaustive reference.`
 
 export function createSearchSkill(): AgentSkill {
   return {

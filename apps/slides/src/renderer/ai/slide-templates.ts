@@ -18,14 +18,86 @@ export const DEFAULT_THEME: SlideTheme = {
   footerText: '#999999',
 }
 
+/**
+ * Curated theme presets — the model picks one by name instead of inventing colors.
+ * Every preset is contrast-checked: dark `primary` on light `background` for content
+ * slides, white text on `primary` for cover/section/closing (see textOn() in the
+ * pptx builder). Never pure black.
+ */
+export const THEME_PRESETS: Record<string, SlideTheme> = {
+  corporate: {
+    primary: '#0D2137',
+    secondary: '#1A73E8',
+    accent: '#00BFA5',
+    background: '#FFFFFF',
+    title: '#0D2137',
+    text: '#333333',
+    footerText: '#999999',
+  },
+  ocean: {
+    primary: '#0B3C5D',
+    secondary: '#328CC1',
+    accent: '#F2A104',
+    background: '#F7FAFC',
+    title: '#0B3C5D',
+    text: '#2E3B4E',
+    footerText: '#8A9BA8',
+  },
+  forest: {
+    primary: '#1B4332',
+    secondary: '#2D6A4F',
+    accent: '#E9C46A',
+    background: '#FFFFFF',
+    title: '#1B4332',
+    text: '#37423D',
+    footerText: '#9AA5A0',
+  },
+  sunset: {
+    primary: '#5D2A42',
+    secondary: '#C75146',
+    accent: '#F4A259',
+    background: '#FFFDF9',
+    title: '#5D2A42',
+    text: '#4A3B3B',
+    footerText: '#B3A3A3',
+  },
+  slate: {
+    primary: '#2F3E46',
+    secondary: '#52796F',
+    accent: '#E07A5F',
+    background: '#FFFFFF',
+    title: '#2F3E46',
+    text: '#3F4A50',
+    footerText: '#9BA6AC',
+  },
+}
+
+export const THEME_PRESET_NAMES = Object.keys(THEME_PRESETS)
+
 export interface SlideContent {
   title: string
   subtitle?: string
   eyebrow?: string
   intro?: string
   content: string[] | Array<{ title: string; desc?: string }> | Array<{ big: string; desc: string }>
-  layout: 'title' | 'title_content' | 'two_column' | 'cards' | 'rows' | 'stats' | 'section_header' | 'closing' | 'agenda' | 'blank'
+  layout:
+    | 'title'
+    | 'title_content'
+    | 'two_column'
+    | 'cards'
+    | 'rows'
+    | 'stats'
+    | 'section_header'
+    | 'closing'
+    | 'agenda'
+    | 'timeline'
+    | 'quote'
+    | 'big_number'
+    | 'comparison'
+    | 'blank'
   imageUrl?: string
+  /** which side the photo sits on; undefined = right (legacy default) */
+  imageSide?: 'left' | 'right'
   theme?: Partial<SlideTheme>
 }
 
@@ -167,8 +239,13 @@ export function generateContentSlide(slide: SlideContent, slideNum: number, them
   }
 
   const bodyWithPad = `<div style="padding:40px 0 40px;">${body}</div>`
+  const imageBlock = slide.imageUrl
+    ? `<div style="flex:0 0 400px;display:flex;align-items:center;">${imageHtml(slide.imageUrl, 400, 300)}</div>`
+    : ''
   const withImage = slide.imageUrl
-    ? `<div style="display:flex;gap:24px;padding:0 40px;"><div style="flex:1;">${bodyWithPad}</div><div style="flex:0 0 400px;display:flex;align-items:center;">${imageHtml(slide.imageUrl, 400, 300)}</div></div>`
+    ? slide.imageSide === 'left'
+      ? `<div style="display:flex;gap:24px;padding:0 40px;">${imageBlock}<div style="flex:1;">${bodyWithPad}</div></div>`
+      : `<div style="display:flex;gap:24px;padding:0 40px;"><div style="flex:1;">${bodyWithPad}</div>${imageBlock}</div>`
     : bodyWithPad
 
   return wrapSlide(`

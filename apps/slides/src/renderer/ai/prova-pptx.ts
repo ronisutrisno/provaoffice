@@ -1,6 +1,7 @@
 import type { AgentToolDef } from '../../shared/ipc'
 import {
   DEFAULT_THEME,
+  THEME_PRESETS,
   type SlideContent,
   type SlideTheme,
 } from './slide-templates'
@@ -30,16 +31,22 @@ export const PROVA_PPTX_TOOLS: AgentToolDef[] = [
   {
     name: 'create_presentation',
     description:
-      'Create a new presentation. Generates a cover slide and initializes the deck. Always call this first.',
+      'Create a new presentation. Generates a cover slide and initializes the deck. Always call this first. Pick a theme_preset by name (recommended) — do not invent colors. Custom theme colors are allowed only when the user explicitly asks for specific colors.',
     inputSchema: {
       type: 'object',
       properties: {
         filename: { type: 'string', description: 'Presentation title (used as deck name)' },
         title: { type: 'string', description: 'Cover slide title' },
         subtitle: { type: 'string', description: 'Cover slide subtitle (optional)' },
+        image_query: { type: 'string', description: 'English Pixabay keywords for the COVER photo (recommended, e.g. "medical students lecture hall classroom"). Pick something that reflects the deck topic — do not rely on the generic fallback.' },
+        theme_preset: {
+          type: 'string',
+          enum: ['corporate', 'ocean', 'forest', 'sunset', 'slate'],
+          description: 'Curated color palette for the whole deck. corporate = navy/blue (default, business), ocean = deep blue/amber, forest = green/gold, sunset = plum/terracotta, slate = gray-green/coral. Pick one that fits the topic and use it for the whole deck.',
+        },
         theme: {
           type: 'object',
-          description: 'Color theme override: { primary, secondary, accent, background } as hex colors',
+          description: 'Custom color override (only when the user explicitly requests specific colors): { primary, secondary, accent, background } as hex colors. Keep background light (or a dark brand color, not black) so text stays readable.',
           properties: {
             primary: { type: 'string' },
             secondary: { type: 'string' },
@@ -48,13 +55,13 @@ export const PROVA_PPTX_TOOLS: AgentToolDef[] = [
           },
         },
       },
-      required: ['filename', 'title'],
+      required: ['filename', 'title', 'theme_preset'],
     },
   },
   {
     name: 'add_slide_with_content',
     description:
-      'Add a content slide to the presentation. Layouts: title_content (bullets+image), two_column, cards (3 cards with title+desc), rows (list with markers), stats (big numbers), section_header, closing, agenda, blank. Content format depends on layout: strings for bullets, {title,desc}[] for cards/rows, {big,desc}[] for stats. IMPORTANT: always provide image_query with English keywords for EVERY content slide so a relevant photo is placed on the slide.',
+      'Add a content slide to the presentation. Layouts: title_content (bullets+image), two_column (2 text columns), cards (3 cards), rows (list with markers), stats (up to 4 big numbers), timeline (horizontal steps, alternating above/below), quote (pull quote; content=[quote text], intro=attribution), big_number (one hero figure; content=[number], intro=caption), comparison (2 panels e.g. before/after), section_header, closing, agenda, blank. Content format: strings for bullets, {title,desc}[] for cards/rows/timeline/comparison, {big,desc}[] for stats. IMPORTANT: always provide image_query with English keywords for EVERY content slide so a relevant photo is placed on the slide. Keep content SHORT so it fits without shrinking: stats max 4 items, each big ≤ 8 chars and desc ≤ 28 chars; cards max 3, desc ≤ 60 chars; rows max 5, desc ≤ 70 chars; timeline max 5 steps, title ≤ 18 chars, desc ≤ 40 chars; comparison exactly 2 panels, desc ≤ 120 chars; title ≤ 45 chars. Readability: keep text high-contrast against the background — never use a black background; dark slides use a dark brand color with white text, content slides use a light background with dark text.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -72,6 +79,7 @@ export const PROVA_PPTX_TOOLS: AgentToolDef[] = [
         intro: { type: 'string', description: 'Intro paragraph below title' },
         subtitle: { type: 'string', description: 'Subtitle for closing layout' },
         image_query: { type: 'string', description: 'REQUIRED. English Pixabay search keywords for the slide photo, e.g. "solar panels green energy" or "corporate meeting boardroom". Always provide this for every content slide.' },
+        image_side: { type: 'string', enum: ['left', 'right'], description: 'Which side the photo sits on. VARY this across slides for visual rhythm: alternate left/right so the deck does not look monotonous. Default right.' },
       },
       required: ['title', 'content', 'layout', 'image_query'],
     },
@@ -101,19 +109,33 @@ export interface ProvaToolResult {
   summary: string
 }
 
-const PIXABAY_KEY = '55586367-a4b8c80ba306e0b4fb4afca94'
-
 async function fetchPixabayImage(query: string): Promise<string | undefined> {
   try {
-    const url = `https://pixabay.com/api/?key=${PIXABAY_KEY}&q=${encodeURIComponent(query)}&image_type=photo&per_page=3&safesearch=true`
-    const resp = await fetch(url)
-    if (!resp.ok) return undefined
-    const data = await resp.json()
-    const hit = data.hits?.[0]
-    return hit?.webformatURL ?? hit?.largeImageURL ?? undefined
+    // search runs in the main process (Pixabay primary) — the renderer CSP blocks direct fetch.
+    // Pick from the top 3 hits (seeded per call) instead of always #1: Pixabay ranks the same
+    // stock photo first for generic queries, which made every deck wear the same cover photo.
+    const r = await window.slidesApi.imageSearch(query, 3)
+    const imgs = r.images
+    if (imgs.length === 0) return undefined
+    const pick = Math.floor(Math.random() * imgs.length)
+    return imgs[pick]?.imageUrl
   } catch {
     return undefined
   }
+}
+
+/**
+ * Topic-based theme fallback when the model omits/misspells theme_preset —
+ * prevents every deck from defaulting to the same corporate navy.
+ */
+function deriveThemePreset(title: string): string {
+  const t = title.toLowerCase()
+  if (/health|medis|kesehatan|dokter|ppds|rs\b|rumah sakit|patient|pasien/.test(t)) return 'forest'
+  if (/climate|energy|sustainab|green|lingkungan|karbon|esg|pertanian/.test(t)) return 'forest'
+  if (/tech|digital|ai\b|data|software|startup|innovation|teknologi/.test(t)) return 'ocean'
+  if (/culture|budaya|sejarah|history|lifestyle|seni|art|wisata|travel/.test(t)) return 'sunset'
+  if (/project|pmbok|manajemen|management|pmi|operations|audit|keuangan|finance/.test(t)) return 'slate'
+  return 'corporate'
 }
 
 /** Fallback English Pixabay keywords derived from the slide title — used only when the
@@ -148,15 +170,19 @@ export async function executeProvaTool(
       if (!title) return { output: 'title is required', summary: 'Error: title required' }
       const subtitle = String(input.subtitle ?? '').trim()
       currentDeckName = String(input.filename ?? title).trim()
+      // Curated preset first (recommended path); custom colors only as an explicit override.
+      // Unknown/missing preset name → derive from the deck topic instead of always corporate.
+      const presetName = String(input.theme_preset ?? '').trim().toLowerCase()
+      const preset = THEME_PRESETS[presetName] ?? THEME_PRESETS[deriveThemePreset(title)] ?? DEFAULT_THEME
+      currentTheme = { ...preset }
       if (input.theme && typeof input.theme === 'object') {
         const th = input.theme as Record<string, string>
-        currentTheme = { ...DEFAULT_THEME }
         if (th.primary) currentTheme.primary = th.primary
         if (th.secondary) currentTheme.secondary = th.secondary
         if (th.accent) currentTheme.accent = th.accent
         if (th.background) currentTheme.background = th.background
       }
-      const coverQuery = deriveImageQuery(title, 'title')
+      const coverQuery = String(input.image_query ?? '').trim() || deriveImageQuery(title, 'title')
       const coverImage = coverQuery ? await fetchPixabayImage(coverQuery) : undefined
       currentSlides = [{ title, subtitle, content: [], layout: 'title', imageUrl: coverImage, theme: { ...currentTheme } }]
       return {
@@ -175,6 +201,7 @@ export async function executeProvaTool(
       const subtitle = String(input.subtitle ?? '').trim() || undefined
       const content = Array.isArray(input.content) ? input.content : []
       const imageQuery = String(input.image_query ?? '').trim() || undefined
+      const imageSide = input.image_side === 'left' ? 'left' : 'right'
 
       let parsedContent: SlideContent['content']
       if (layout === 'cards' || layout === 'rows') {
@@ -206,6 +233,7 @@ export async function executeProvaTool(
         content: parsedContent,
         layout,
         imageUrl,
+        imageSide,
         theme: { ...currentTheme },
       }
 

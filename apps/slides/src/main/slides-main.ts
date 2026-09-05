@@ -768,9 +768,13 @@ async function saveDraftAfterGenerate(
     // Ensure the directory exists
     if (!existsSync(draftsDir)) mkdirSync(draftsDir, { recursive: true })
 
-    // Append mode: overwrite if the session already has a draft path; otherwise create a new file too
+    // Overwrite the session's existing draft for BOTH modes: every AI iteration
+    // (add_slide, QC fixes, …) lands through here, and creating a fresh numbered
+    // file per call used to litter <Documents>/PROVAOffice with -2/-3/… copies.
+    // The disk file always mirrors the deck's current state; version history
+    // lives in the in-memory undo stack / AI snapshots, not in draft copies.
     let draftPath: string
-    if (mode === 'append' && session.path && session.path.startsWith(draftsDir)) {
+    if (session.path && session.path.startsWith(draftsDir)) {
       draftPath = session.path
     } else {
       draftPath = pickDraftPath(draftsDir, deckName)
@@ -1386,23 +1390,27 @@ export function registerSlidesIpc(): void {
       // replace: assemble the whole batch into one multi-page pptx as the new deck base.
       // append: merge the "new pages" one by one into the existing deck via mergeSlideFromPptx
       // (earlier pages are untouched).
-      const readCloudPage = async (marker: string): Promise<{ bytes: Uint8Array }> => {
+      const readCloudPage = async (
+        marker: string,
+        slideNumber: number,
+      ): Promise<{ bytes: Uint8Array; imageFailures: { page: number; url: string }[] }> => {
         if (marker.startsWith(PROVA_JSON_PREFIX)) {
           const slide = decodeSlideMarker(marker)
           if (!slide) throw new Error('invalid prova-json marker')
-          return { bytes: await slideContentToPptxBytes([slide]) }
+          return await slideContentToPptxBytes([slide], slideNumber)
         }
         if (!marker.startsWith(CLOUD_PAGE_PREFIX)) throw new Error('expected a cloud page marker')
         const path = marker.slice(CLOUD_PAGE_PREFIX.length)
         if (!issuedCloudPages.has(path)) throw new Error('unknown cloud page marker')
-        return { bytes: new Uint8Array(await readFile(path)) }
+        return { bytes: new Uint8Array(await readFile(path)), imageFailures: [] }
       }
-      const assembleDeck = async (): Promise<{ bytes: Uint8Array }> => {
-        const perPage = await Promise.all(pagesHtml.map(readCloudPage))
+      const assembleDeck = async (): Promise<{ bytes: Uint8Array; imageFailures: { page: number; url: string }[] }> => {
+        const perPage = await Promise.all(pagesHtml.map((html, i) => readCloudPage(html, i + 1)))
+        const imageFailures = perPage.flatMap((p, i) => p.imageFailures.map((f) => ({ page: i, url: f.url })))
         const base = await openPptx(perPage[0]!.bytes)
         for (const one of perPage.slice(1)) await mergeSlideFromPptx(base, one.bytes)
         for (const s of base.deck.slides) promoteSlideBackground(s, base.deck.size)
-        return { bytes: await savePptx(base) }
+        return { bytes: await savePptx(base), imageFailures }
       }
 
       try {
@@ -1422,9 +1430,11 @@ export function registerSlidesIpc(): void {
           pushHistory(existing)
           let merged = 0
           let lastErr: string | undefined
-          for (const html of pagesHtml) {
+          const imageFailures: { page: number; url: string }[] = []
+          for (let i = 0; i < pagesHtml.length; i++) {
             try {
-              const one = await readCloudPage(html)
+              const one = await readCloudPage(pagesHtml[i]!, beforeCount + i + 1)
+              imageFailures.push(...one.imageFailures)
               const slide = await mergeSlideFromPptx(opened, one.bytes)
               if (slide) {
                 promoteSlideBackground(slide, opened.deck.size)
@@ -1455,6 +1465,7 @@ export function registerSlidesIpc(): void {
             size: { cx: existing.opened.deck.size.cx, cy: existing.opened.deck.size.cy },
             defaultFont: deckDefaultFont(existing.opened),
             appendedFrom: beforeCount,
+            ...(imageFailures.length ? { imageFailures } : {}),
             ...(lastErr && merged < pagesHtml.length
               ? { fallbackReason: tm('errPartialAppend', { reason: lastErr }) }
               : {}),
@@ -1479,7 +1490,7 @@ export function registerSlidesIpc(): void {
           if (!html || pagesHtml.length !== 1) {
             return { error: tm('errReplaceNeedsOne') }
           }
-          const one = await readCloudPage(html)
+          const one = await readCloudPage(html, atIndex + 1)
           pushHistory(existing)
           const rollback = () => {
             const snap = existing.undoStack.pop()
@@ -1509,6 +1520,7 @@ export function registerSlidesIpc(): void {
             size: { cx: existing.opened.deck.size.cx, cy: existing.opened.deck.size.cy },
             defaultFont: deckDefaultFont(existing.opened),
             replacedIndex: atIndex,
+            ...(one.imageFailures.length ? { imageFailures: one.imageFailures } : {}),
           }
         }
 
@@ -1529,7 +1541,7 @@ export function registerSlidesIpc(): void {
           if (!html || pagesHtml.length !== 1) {
             return { error: tm('errInsertNeedsOne') }
           }
-          const one = await readCloudPage(html)
+          const one = await readCloudPage(html, atIndex + 1)
           pushHistory(existing)
           const rollback = () => {
             const snap = existing.undoStack.pop()
@@ -1559,11 +1571,12 @@ export function registerSlidesIpc(): void {
             size: { cx: existing.opened.deck.size.cx, cy: existing.opened.deck.size.cy },
             defaultFont: deckDefaultFont(existing.opened),
             insertedIndex: atIndex,
+            ...(one.imageFailures.length ? { imageFailures: one.imageFailures } : {}),
           }
         }
 
         // replace mode: assemble the whole batch into one multi-page pptx as the new deck base.
-        const { bytes } = await assembleDeck()
+        const { bytes, imageFailures } = await assembleDeck()
         const opened = await openPptx(bytes)
         // With per-page conversion + merging, stored PageVisualData is no longer needed; append reads the opened deck directly.
         const replaceSession: Session = {
@@ -1583,6 +1596,7 @@ export function registerSlidesIpc(): void {
           slides: buildAllRenderSlides(opened, fitWidthPx),
           size: { cx: opened.deck.size.cx, cy: opened.deck.size.cy },
           defaultFont: deckDefaultFont(opened),
+          ...(imageFailures.length ? { imageFailures } : {}),
         }
       } catch (err) {
         return { error: err instanceof Error ? err.message : String(err) }

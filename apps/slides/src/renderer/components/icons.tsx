@@ -2,6 +2,7 @@
 
 import type { ReactNode } from 'react'
 import type { AnimEffectKind } from '../../shared/ipc'
+import appIcon from '../assets/app-icon.png'
 
 interface IconProps {
   size?: number
@@ -2111,7 +2112,7 @@ export function IconAiImage(props: IconProps) {
 export function ProvaMark({ size = 30 }: { size?: number }) {
   return (
     <img
-      src="../assets/app-icon.png"
+      src={appIcon}
       width={size}
       height={size}
       alt="PROVAOffice"

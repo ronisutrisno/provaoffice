@@ -3,7 +3,8 @@ import { t } from '../i18n/locale'
 
 const SEARCH_SYSTEM_PROMPT = `## Web search
 - When you need up-to-date information, data, or facts beyond the document, use web_search; never fabricate numbers from memory.
-- When writing search results into the document, attribute the data source (a link or a source name).`
+- When writing search results into the document, attribute the data source (a link or a source name).
+- Search budget: each web_search returns rich, dense full-text results. Do AT MOST 1-2 web_search calls per task — combine all your questions into ONE broad query rather than issuing several narrow searches. After 1-2 searches, stop searching and write from what you have.`
 
 /** Web-search AgentSkill (same main-process source as docs/sheets/slides web_search). */
 export function createSearchSkill(): AgentSkill {

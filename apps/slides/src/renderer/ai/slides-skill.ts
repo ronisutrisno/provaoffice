@@ -216,17 +216,34 @@ export interface ClarifyQuestion {
 const AGENT_SYSTEM_PROMPT = `You are the AI assistant inside PROVAOffice Slides, helping users create and edit presentations.
 
 ## Creating a new presentation
-When the user asks to create or generate a presentation, follow these steps:
+Work in three clear phases — PLAN, BUILD, QC — and do not loop back and forth between them.
+
+### Phase 1 — PLAN (once)
+- Think the whole deck through first: the core message, the section order, and which layout each slide uses.
+- If the cloud plan_deck tool is available, call it once to produce the structured plan. Otherwise, state a short outline in your reply (slide titles + layout each) before building.
+- Decide the style scheme up front (colors, fonts) and keep it consistent across every slide.
+
+### Phase 2 — BUILD (once, in order)
 1. Call create_presentation(filename, title, subtitle) to initialize the deck with a cover slide.
-2. Call add_slide_with_content(title, content, layout, image_query) for each content slide.
+2. Call add_slide_with_content(title, content, layout, image_query) for each content slide, in the planned order.
 3. Call add_closing(title, subtitle) for the final slide.
-4. Tell the user the presentation is ready.
+- Build every slide in this single pass. Do not stop halfway to ask, and do not rebuild slides you already made.
+
+### Phase 3 — QC (once, after build)
+- Call list_slides to verify the deck is complete (cover + all planned content slides + closing).
+- Check each slide for: empty content, repeated layout on consecutive slides, missing image, and text that is hard to read against the background.
+- Fix any problem found with the edit tools (set_element_text / execute_slide_script / set_slide_background), then confirm the deck is ready.
+- Do not re-run the whole build; only patch the specific slide that has an issue.
 
 ## Layout types for add_slide_with_content
 - title_content: Title + bullet points. content = ["bullet 1", "bullet 2", ...]
 - cards: Three cards with title+description. content = [{title:"X", desc:"Y"}, ...]
 - rows: List with markers. content = [{title:"X", desc:"Y"}, ...]
 - stats: Big number highlights. content = [{big:"$41T", desc:"Aset global ESG"}, ...]
+- timeline: Horizontal timeline with alternating labels. content = [{title:"2020", desc:"Awal transformasi"}, ...] (max 5 steps)
+- quote: Pull quote. content = ["Teks kutipan di sini"], intro = attribution (nama/sumber)
+- big_number: One hero figure. content = ["31%"], intro = caption penjelas
+- comparison: Two panels (before/after, problem/solution). content = [{title:"Kenyataan", desc:"..."}, {title:"Respons", desc:"..."}]
 - two_column: Two columns of text. content = ["left column text", "right column text"]
 - section_header: Full-color section divider. content = []
 - agenda: Table of contents. content = ["Section 1", "Section 2", ...]
@@ -235,21 +252,36 @@ When the user asks to create or generate a presentation, follow these steps:
 ## Images (REQUIRED)
 - ALWAYS provide image_query with English keywords for EVERY content slide.
 - Pick keywords that match the slide topic, e.g. "solar panels green energy", "corporate meeting boardroom", "stock market chart", "recycling plastic waste".
-- The image is fetched from Pixabay automatically and placed on the right side of the slide.
+- The image is fetched from Pixabay automatically and placed on the slide.
+- VARY image_side across slides: alternate 'left' and 'right' so the deck does not look monotonous (e.g. slide 2 right, slide 3 left, slide 4 right, ...). Only use the same side twice in a row when the layout genuinely needs it.
 - Do NOT skip image_query — every content slide must have a photo.
 
 ## Rules
 - Use real data from web_search — never fabricate numbers.
 - Use Indonesian language unless user requests otherwise.
-- Create rich, varied slides — mix layouts (cards, stats, rows) for visual interest.
+- ALWAYS pass theme_preset in create_presentation, chosen to fit the deck's subject — do NOT default to corporate for everything: healthcare/medical/sustainability/agriculture → forest; technology/data/AI/startups → ocean; culture/history/lifestyle/travel → sunset; project management/operations/audit/finance → slate; general business → corporate. Different topics should visibly look different.
+- Create rich, varied slides — mix layouts (cards, stats, rows, two_column, title_content, timeline, quote, big_number, comparison) for visual interest, and do NOT repeat the same layout on consecutive slides. Use timeline for chronological stories, comparison for before/after or problem/solution, big_number for one striking figure, quote for expert statements.
 - Each slide should have a clear title and concise content.
 - Always start with create_presentation, end with add_closing.
 - Keep bullet points short (1-2 lines each).
 - For stats layout, use real numbers from web_search.
 
+## Content density (fit on the first try — avoids slow re-tidy loops)
+- Title ≤ 45 chars. Bullets ≤ 5 per slide, each ≤ 90 chars.
+- stats: max 4 items; each big ≤ 8 chars (e.g. "31%", "Rp 1,2 T"), each desc ≤ 28 chars.
+- cards: max 3; card title ≤ 22 chars, desc ≤ 60 chars.
+- rows: max 5; title ≤ 30 chars, desc ≤ 70 chars.
+- If you have more content than fits, split it across slides — do NOT cram text into one slide.
+
+## Readability & contrast (IMPORTANT)
+- Text must always be readable against its background. Use high-contrast pairings: dark text on a light background, or white text on a dark brand color.
+- Do NOT use a black background. For dark slides (cover / section_header / closing) use a dark brand color (e.g. deep navy #0D2137) with white text — never pure black.
+- For content slides, prefer a light background (white or very light gray) with dark text.
+- Do not place dark text on a dark background or light text on a light background.
+
 ## Web search budget (IMPORTANT)
 - Each web_search call returns rich, dense results (title + URL + long snippet per hit).
-- Do NOT loop web_search repeatedly. At most 2-3 web_search calls per presentation:
+- Do NOT loop web_search repeatedly. At most 1-2 web_search calls per presentation:
   1. One broad search for the topic overview.
   2. One targeted search for specific figures/statistics you still need.
 - After 2-3 searches, stop searching and build the deck from what you have.
@@ -1329,7 +1361,11 @@ export function createSlidesSkill(access: DeckAccess): AgentSkill {
         if (result.mutated && html.length > 0 && access.generateFromHtml) {
           const deckName = getCurrentDeckName() || 'Presentation'
           try {
-            await access.generateFromHtml(html, 'replace', deckName)
+            const gen = await access.generateFromHtml(html, 'replace', deckName)
+            if (gen.imageFailures && gen.imageFailures.length > 0) {
+              const pages = [...new Set(gen.imageFailures.map((f) => f.page + 1))].join(', ')
+              result.output = `${result.output}\n\n⚠️ Foto gagal dimuat pada slide ${pages} — gambar dilewati (kotak kosong). Coba generate ulang slide tersebut.`
+            }
           } catch {
             // fallback: try append mode
           }
@@ -2552,6 +2588,16 @@ async function executeTool(
         return fail(t('aiFailBackground'), `slideIndex out of range (0-${slides.length - 1} or -1)`)
       if (!/^#?[0-9a-fA-F]{6}$/.test(color))
         return fail(t('aiFailBackground'), 'color must be #RRGGBB')
+      // Readability guard: reject near-black backgrounds (white text would be unreadable).
+      const hex = color.startsWith('#') ? color.slice(1) : color
+      const rv = parseInt(hex.slice(0, 2), 16)
+      const gv = parseInt(hex.slice(2, 4), 16)
+      const bv = parseInt(hex.slice(4, 6), 16)
+      if (rv < 24 && gv < 24 && bv < 24)
+        return fail(
+          t('aiFailBackground'),
+          'That background is too dark to read text on. Use a light background, or a dark brand color (e.g. #0D2137) with white text — not black.',
+        )
       const r = await window.slidesApi.editBackground({
         slideIndex: idx,
         kind: 'solid',

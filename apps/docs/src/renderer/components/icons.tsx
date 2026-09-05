@@ -1,6 +1,7 @@
 /** Small monochrome SVG icons approximating Word's ribbon glyphs. */
 
 import type { ReactNode } from 'react'
+import appIcon from '../assets/app-icon.png'
 
 interface IconProps {
   size?: number
@@ -1585,7 +1586,7 @@ export function IconClose(props: IconProps) {
 export function ProvaMark({ size = 30 }: { size?: number }) {
   return (
     <img
-      src="../assets/app-icon.png"
+      src={appIcon}
       width={size}
       height={size}
       alt="PROVAOffice"

@@ -118,6 +118,7 @@ const FILTERS: { key: string; label: StringKey }[] = [
   { key: 'xlsx', label: 'filterSheets' },
   { key: 'pptx', label: 'filterSlides' },
   { key: 'pdf', label: 'filterPdf' },
+  { key: 'flow', label: 'filterFlow' },
   { key: 'md', label: 'filterMd' },
 ]
 
@@ -1220,11 +1221,18 @@ export function Home() {
     )
   }
 
+  const handleNewFlow = () => {
+    void window.aiOffice.newFlow(
+      selectedProjectId ? { projectId: selectedProjectId } : undefined,
+    )
+  }
+
   const NEW_ITEMS = [
     { ext: 'docx', title: t('newDoc'), sub: '.docx', action: handleNewDoc },
     { ext: 'xlsx', title: t('newSheet'), sub: '.xlsx', action: handleNewSheet },
     { ext: 'pptx', title: t('newSlide'), sub: '.pptx', action: handleNewSlide },
     { ext: 'md', title: t('newMarkdown'), sub: '.md', action: handleNewMarkdown },
+    { ext: 'flow', title: 'AI Flow', sub: '.flow', action: handleNewFlow },
   ]
 
   function renderQuickCards() {
@@ -1850,7 +1858,7 @@ export function Home() {
         <AccountEntry onStatusChange={handleAccountStatus} />
         <div className="sidebar-version">
           <div>Developed by Proxsis-AI Research</div>
-          <div>Version: Beta-01.20260825</div>
+          <div>Version: Beta-0.8.0</div>
         </div>
       </aside>
 

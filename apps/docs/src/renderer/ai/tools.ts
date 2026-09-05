@@ -342,28 +342,21 @@ async function executeAsyncTool(
     case 'image_search': {
       const query = String(call.input.query ?? '').trim()
       if (!query) return fail(t('aiSumImageSearch'), 'query must not be empty')
-      const apiKey = '55586367-a4b8c80ba306e0b4fb4afca94'
       const maxResults = Number(call.input.maxResults) || 8
       try {
-        const url = `https://pixabay.com/api/?key=${encodeURIComponent(apiKey)}&q=${encodeURIComponent(query)}&image_type=photo&per_page=${maxResults}&safesearch=true`
-        const resp = await fetch(url)
-        if (!resp.ok) return fail(t('aiSumImageSearch'), `Pixabay API error: ${resp.status}`)
-        const data = await resp.json()
-        const hits = (data.hits ?? []) as Array<{ webformatURL: string; imageWidth: number; imageHeight: number; tags: string }>
-        const images = hits.map((h) => ({
-          title: h.tags,
-          imageUrl: h.webformatURL,
-          width: h.imageWidth,
-          height: h.imageHeight,
-        }))
-        const lines = images.map(
+        // search runs in the main process (Pixabay primary) — the renderer CSP blocks direct fetch
+        const r = await window.desktop.imageSearch(query, maxResults)
+        if (r.method === 'error') {
+          return fail(t('aiSumImageSearch'), `image search failed: ${r.error ?? 'unknown error'}`)
+        }
+        const lines = r.images.map(
           (im, i) =>
             `${i + 1}. ${im.title || '(untitled)'} [${im.width ?? '?'}x${im.height ?? '?'}]\n   ${im.imageUrl}`,
         )
         return {
           output: lines.join('\n') || '(no images)',
           mutated: false,
-          summary: t('aiSumImageSearchDone', { query, count: images.length }),
+          summary: t('aiSumImageSearchDone', { query, count: r.images.length }),
         }
       } catch (err) {
         return fail(t('aiSumImageSearch'), `image search failed: ${err}`)

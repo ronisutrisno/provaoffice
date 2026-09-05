@@ -1,0 +1,542 @@
+:root {
+  --bg: var(--color-bg-page, #f5f6f8);
+  --panel: var(--color-bg-page, #ffffff);
+  --border: var(--color-border-default, #e2e5ea);
+  --text: var(--color-text-primary, #1f2328);
+  --muted: var(--color-text-secondary, #6b7280);
+  /* per-app accent (flows = blue), light + dark values */
+  --accent: #1a73e8;
+  --accent-dark: #1557b0;
+  --accent-soft: light-dark(#eaf1fe, #263a57);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  font-family: var(--gs-font-sans, system-ui, -apple-system, 'Segoe UI', sans-serif);
+  color: var(--text);
+  background: var(--bg);
+  overflow: hidden;
+}
+
+.flows-app {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.flows-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+  background: var(--panel);
+  flex-wrap: wrap;
+}
+
+.flows-toolbar button {
+  border: 1px solid var(--border);
+  background: var(--panel);
+  color: var(--text);
+  border-radius: 6px;
+  padding: 5px 10px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.flows-toolbar button:hover {
+  background: var(--color-bg-subtle, #f0f2f5);
+}
+
+.flows-toolbar .title {
+  font-weight: 600;
+  margin-right: 8px;
+}
+
+.flows-toolbar .spacer {
+  flex: 1;
+}
+
+.flows-toolbar .zoom-label {
+  min-width: 52px;
+  font-variant-numeric: tabular-nums;
+}
+
+.flows-main {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
+/* canvas: scrollable in both directions for long flows */
+.flows-canvas-wrap {
+  flex: 1;
+  min-width: 0;
+  position: relative;
+  background: var(--bg);
+  overflow: auto;
+}
+
+/* ── AI panel (matches docs/slides) ───────────────────────── */
+.flows-ai {
+  width: 360px;
+  flex-shrink: 0;
+  border-right: 1px solid var(--color-border-strong, var(--border));
+  background: var(--panel);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.flows-ai-head {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 10px 12px 10px 14px;
+  border-bottom: 1px solid var(--border);
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--text);
+}
+
+.flows-ai-log {
+  flex: 1;
+  overflow-y: auto;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.flows-msg {
+  font-size: 15px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-word;
+  animation: flows-row-in 320ms cubic-bezier(0.2, 0.8, 0.3, 1);
+}
+
+.flows-msg.user {
+  align-self: flex-end;
+  background: var(--color-bg-subtle, #eef1f5);
+  color: var(--text);
+  padding: 8px 16px;
+  border-radius: 14px;
+  max-width: 80%;
+  line-height: 1.5;
+}
+
+.flows-msg.assistant {
+  align-self: stretch;
+  color: var(--text);
+}
+
+.flows-msg.error {
+  background: #fdecec;
+  color: #b3261e;
+  align-self: stretch;
+  padding: 8px 12px;
+  border-radius: 10px;
+}
+
+.flows-tool {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--muted);
+  padding: 3px 0;
+  animation: flows-row-in 260ms ease-out;
+}
+
+.flows-tool .dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent);
+  flex-shrink: 0;
+}
+
+.flows-tool.done .dot {
+  background: #2e7d32;
+}
+
+.flows-tool.err .dot {
+  background: #c62828;
+}
+
+/* typing indicator */
+.flows-typing {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 0;
+}
+
+.flows-typing span {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--muted);
+  opacity: 0.4;
+  animation: flows-blink 1.2s infinite ease-in-out;
+}
+
+.flows-typing span:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.flows-typing span:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+@keyframes flows-blink {
+  0%,
+  80%,
+  100% {
+    opacity: 0.3;
+    transform: translateY(0);
+  }
+  40% {
+    opacity: 1;
+    transform: translateY(-3px);
+  }
+}
+
+@keyframes flows-row-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.flows-ai-input {
+  padding: 8px 12px 12px;
+  background: var(--color-bg-page, #fff);
+}
+
+.flows-input-box {
+  border: 1px solid var(--color-border-default, #e2e5ea);
+  border-radius: var(--radius-16, 16px);
+  background: var(--color-bg-page, #fff);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.06);
+  transition:
+    border-color var(--transition-fast, 0.15s ease),
+    box-shadow var(--transition-fast, 0.15s ease);
+}
+
+.flows-input-box:focus-within {
+  border-color: var(--color-accent, #1a73e8);
+  box-shadow: 0 2px 12px rgba(26, 115, 232, 0.14);
+}
+
+.flows-input-box textarea {
+  display: block;
+  width: 100%;
+  resize: none;
+  border: none;
+  background: none;
+  border-radius: var(--radius-16, 16px) var(--radius-16, 16px) 0 0;
+  padding: 0 14px;
+  margin: 12px 0 4px;
+  font-size: 16px;
+  font-family: inherit;
+  line-height: 24px;
+  outline: none;
+  color: var(--color-text-primary, #1f2328);
+  min-height: 48px;
+  max-height: 168px;
+  overflow-y: auto;
+}
+
+.flows-input-box textarea::placeholder {
+  color: var(--color-text-tertiary, #9aa1ab);
+}
+
+.flows-input-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 4px 8px 8px 10px;
+}
+
+.flows-send-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  flex-shrink: 0;
+  border: none;
+  border-radius: 35%;
+  background: var(--color-accent, #1a73e8);
+  color: #fff;
+  cursor: pointer;
+  transition: all var(--transition-fast, 0.15s ease);
+}
+
+.flows-send-btn:hover:not(:disabled) {
+  filter: brightness(0.92);
+}
+
+.flows-send-btn:active:not(:disabled) {
+  filter: brightness(0.88);
+  transform: scale(0.98);
+}
+
+.flows-send-btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+/* ── attachments ─────────────────────────────────────────── */
+.flows-attach-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 8px 12px 0;
+}
+
+.flows-attach-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+  padding: 4px 8px;
+  border: 1px solid var(--color-border-default, #e2e5ea);
+  border-radius: var(--radius-8, 8px);
+  background: var(--color-bg-subtle, #f2f4f7);
+  font-size: 12px;
+  color: var(--color-text-primary, #1f2328);
+}
+
+.flows-attach-chip > span:first-child,
+.flows-attach-chip {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.flows-attach-x {
+  border: none;
+  background: none;
+  color: var(--color-text-tertiary, #9aa1ab);
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+  padding: 0 2px;
+}
+
+.flows-attach-x:hover {
+  color: #c62828;
+}
+
+.flows-attach-notice {
+  margin: 0 12px;
+  padding: 6px 10px;
+  border-radius: var(--radius-8, 8px);
+  background: #fdecec;
+  color: #b3261e;
+  font-size: 12px;
+}
+
+.flows-clip-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--color-text-secondary, #6b7280);
+  cursor: pointer;
+  transition: background var(--transition-fast, 0.15s ease);
+}
+
+.flows-clip-btn:hover {
+  background: var(--color-bg-subtle, #f2f4f7);
+  color: var(--color-text-primary, #1f2328);
+}
+
+.flows-input-spacer {
+  flex: 1;
+}
+
+/* ── work group (iterasi tool, ala docs) ─────────────────── */
+.flows-work-group {
+  margin-bottom: 8px;
+}
+
+.flows-work-summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  user-select: none;
+  font-family: inherit;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--color-text-tertiary, #8a919c);
+  transition: color 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.flows-work-summary:hover {
+  color: var(--color-text-secondary, #6b7280);
+}
+
+.flows-spinner {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--color-border-default, #d5dae2);
+  border-top-color: var(--color-accent, #1a73e8);
+  border-radius: 50%;
+  animation: flows-spin 0.8s linear infinite;
+}
+
+@keyframes flows-spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  50% {
+    transform: rotate(180deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+.flows-work-caret {
+  display: inline-block;
+  transition: transform 0.15s ease;
+  font-size: 11px;
+}
+
+.flows-work-caret.open {
+  transform: rotate(180deg);
+}
+
+.flows-work-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 4px 0 2px 4px;
+  padding-left: 12px;
+  border-left: 2px solid var(--color-border-default, #e2e5ea);
+}
+
+.flows-work-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--color-text-secondary, #6b7280);
+  animation: flows-row-in 240ms ease-out;
+}
+
+.flows-work-row .dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--color-accent, #1a73e8);
+  flex-shrink: 0;
+}
+
+.flows-work-row.done .dot {
+  background: #2e7d32;
+}
+
+.flows-work-row.err .dot {
+  background: #c62828;
+}
+
+/* ── button press feedback ───────────────────────────────── */
+.flows-toolbar button,
+.flows-send-btn,
+.flows-clip-btn {
+  transition:
+    transform 0.08s ease,
+    background 0.15s ease,
+    box-shadow 0.12s ease,
+    filter 0.12s ease;
+}
+
+.flows-toolbar button:active,
+.flows-clip-btn:active {
+  transform: translateY(1px) scale(0.97);
+  background: var(--color-bg-subtle, #e9edf2);
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.14);
+}
+
+.flows-send-btn:active:not(:disabled) {
+  transform: scale(0.92);
+  filter: brightness(0.85);
+}
+
+.flows-work-step {
+  display: inline-block;
+  min-width: 18px;
+  color: var(--color-text-tertiary, #9aa1ab);
+  font-variant-numeric: tabular-nums;
+}
+
+/* markdown in assistant bubbles */
+.flows-msg.assistant .ai-md {
+  white-space: normal;
+}
+
+.ai-md p,
+.ai-md ul,
+.ai-md ol {
+  margin: 0 0 10px;
+}
+
+.ai-md :last-child {
+  margin-bottom: 0;
+}
+
+.ai-md ul,
+.ai-md ol {
+  padding-left: 20px;
+}
+
+.ai-md li {
+  margin-left: 18px;
+  line-height: 1.6;
+}
+
+.ai-md .ai-md-h {
+  font-weight: 700;
+  line-height: 1.3;
+  margin: 12px 0 6px;
+}
+
+.ai-md code {
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: var(--color-bg-subtle, #f2f4f7);
+  color: var(--color-text-secondary, #6b7280);
+  font-size: 13px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
