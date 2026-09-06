@@ -61,7 +61,7 @@ export const PROVA_PPTX_TOOLS: AgentToolDef[] = [
   {
     name: 'add_slide_with_content',
     description:
-      'Add a content slide to the presentation. Layouts: title_content (bullets+image), two_column (2 text columns), cards (3 cards), rows (list with markers), stats (up to 4 big numbers), timeline (horizontal steps, alternating above/below), quote (pull quote; content=[quote text], intro=attribution), big_number (one hero figure; content=[number], intro=caption), comparison (2 panels e.g. before/after), section_header, closing, agenda, blank. Content format: strings for bullets, {title,desc}[] for cards/rows/timeline/comparison, {big,desc}[] for stats. IMPORTANT: always provide image_query with English keywords for EVERY content slide so a relevant photo is placed on the slide. Keep content SHORT so it fits without shrinking: stats max 4 items, each big ≤ 8 chars and desc ≤ 28 chars; cards max 3, desc ≤ 60 chars; rows max 5, desc ≤ 70 chars; timeline max 5 steps, title ≤ 18 chars, desc ≤ 40 chars; comparison exactly 2 panels, desc ≤ 120 chars; title ≤ 45 chars. Readability: keep text high-contrast against the background — never use a black background; dark slides use a dark brand color with white text, content slides use a light background with dark text.',
+      'Add a content slide to the presentation. Layouts: title_content (bullets+image), two_column (2 text columns), cards (3 cards), rows (list with markers), stats (up to 4 big numbers), timeline (horizontal steps, alternating above/below), quote (pull quote; content=[quote text], intro=attribution), big_number (one hero figure; content=[number], intro=caption), comparison (2 panels e.g. before/after), section_header, closing, agenda, blank. Content format: strings for bullets, {title,desc}[] for cards/rows/timeline/comparison, {big,desc}[] for stats. IMPORTANT: always provide image_query with English keywords for EVERY content slide so a relevant photo is placed on the slide. Keep content SHORT so it fits without shrinking: stats max 4 items, each big ≤ 8 chars and desc ≤ 28 chars; cards max 3, EACH card needs a desc of 30–60 chars; rows max 5, desc ≤ 70 chars; timeline max 5 steps, title ≤ 18 chars, desc ≤ 40 chars; comparison exactly 2 panels, desc ≤ 120 chars; title ≤ 45 chars. Readability: keep text high-contrast against the background — never use a black background; dark slides use a dark brand color with white text, content slides use a light background with dark text.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -219,10 +219,13 @@ export async function executeProvaTool(
       }
 
       let imageUrl: string | undefined
-      if (imageQuery) imageUrl = await fetchPixabayImage(imageQuery)
-      else {
-        const fallback = deriveImageQuery(title, layout)
-        if (fallback) imageUrl = await fetchPixabayImage(fallback)
+      // Stats renders full-width (no side photo) — skip the fetch entirely.
+      if (layout !== 'stats') {
+        if (imageQuery) imageUrl = await fetchPixabayImage(imageQuery)
+        else {
+          const fallback = deriveImageQuery(title, layout)
+          if (fallback) imageUrl = await fetchPixabayImage(fallback)
+        }
       }
 
       const slide: SlideContent = {

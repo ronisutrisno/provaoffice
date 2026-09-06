@@ -7,10 +7,11 @@ import type {
 
 /**
  * Deterministic layout audit (modeled on the Google Slides add-in review_google_slides_addin geometry-only checks):
- * pure geometric computation, no LLM calls, no screenshots. Checks three kinds of problems:
+ * pure geometric computation, no LLM calls, no screenshots. Checks four kinds of problems:
  *  1. Elements extending past the canvas
  *  2. Pairwise overlap of content elements (text-text / text-image/media)
  *  3. Text overflowing its text box (uses the render layer's already-laid-out text.contentHeight — exact, not estimated)
+ *  4. Low contrast: text nearly invisible against its reconstructed background (solid fills under it)
  * Results are appended to layout tools' return values so the AI "sees" the real post-edit state (write → verify → fix loop).
  */
 
@@ -96,6 +97,124 @@ const OVERLAP_MIN_AREA = 400
 /** Background color blocks (≥70% of canvas area) don't participate in overlap detection */
 const BACKGROUND_AREA_RATIO = 0.7
 const MAX_ISSUES = 12
+/** WCAG contrast ratio below which text is effectively invisible (white on a
+ *  light tint lands ~1.0–1.2; decorative accents on light sit ~1.7–3.0) */
+const CONTRAST_MIN = 1.5
+
+type Rgba = [number, number, number, number]
+
+function parseRenderColor(c: string | undefined | null): Rgba | null {
+  if (!c) return null
+  const s = c.trim()
+  // 8-digit #RRGGBBAA (pptx-engine encodes a:alpha into the hex — color.ts)
+  const hex8 = /^#?([0-9a-f]{8})$/i.exec(s)
+  if (hex8) {
+    const n = parseInt(hex8[1]!.slice(0, 6), 16)
+    const a = parseInt(hex8[1]!.slice(6, 8), 16) / 255
+    return [(n >> 16) & 255, (n >> 8) & 255, n & 255, a]
+  }
+  const hex = /^#?([0-9a-f]{6})$/i.exec(s)
+  if (hex) {
+    const n = parseInt(hex[1]!, 16)
+    return [(n >> 16) & 255, (n >> 8) & 255, n & 255, 1]
+  }
+  const rgb = /rgba?\(([^)]+)\)/i.exec(s)
+  if (rgb) {
+    const parts = (rgb[1] ?? '').split(',').map((p) => parseFloat(p.trim()))
+    if (parts.length >= 3 && parts.every((p) => Number.isFinite(p)))
+      return [parts[0]!, parts[1]!, parts[2]!, parts.length >= 4 ? parts[3]! : 1]
+  }
+  return null
+}
+
+function srgbLuminance(r: number, g: number, b: number): number {
+  const f = (v: number) => {
+    const s = v / 255
+    return s <= 0.03928 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4)
+  }
+  return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b)
+}
+
+function contrastRatio(a: Rgba, b: Rgba): number {
+  const la = srgbLuminance(a[0], a[1], a[2])
+  const lb = srgbLuminance(b[0], b[1], b[2])
+  const hi = Math.max(la, lb)
+  const lo = Math.min(la, lb)
+  return (hi + 0.05) / (lo + 0.05)
+}
+
+/** Composite fg (with alpha) over an opaque bg. */
+function blendOver(fg: Rgba, bg: Rgba): Rgba {
+  const t = Math.min(1, Math.max(0, fg[3]))
+  return [fg[0] * t + bg[0] * (1 - t), fg[1] * t + bg[1] * (1 - t), fg[2] * t + bg[2] * (1 - t), 1]
+}
+
+/**
+ * Contrast check: for every text node, reconstruct its effective background by
+ * compositing solid fills beneath it (z-order) over the slide background, then
+ * flag runs whose WCAG contrast ratio is below CONTRAST_MIN. Image/gradient
+ * backgrounds are skipped (unknowable without pixels).
+ */
+function checkContrast(slide: RenderSlide): string[] {
+  const issues: string[] = []
+  const base = parseRenderColor(
+    slide.background.kind === 'solid' ? slide.background.color : undefined,
+  ) ?? [255, 255, 255, 1]
+  slide.nodes.forEach((node, idx) => {
+    if (node.decoration) return
+    if (node.type !== 'shape' && node.type !== 'text') return
+    const sn = node as ShapeRenderNode
+    const layout = sn.text
+    if (!layout) return
+    const runs = layout.lines.flatMap((l) => l.runs.filter((r) => r.text.trim() && !r.isBullet))
+    if (runs.length === 0) return
+    const cx = node.box.x + node.box.w / 2
+    const cy = node.box.y + node.box.h / 2
+    let bg = base
+    let unknown = false
+    for (let j = 0; j < idx; j++) {
+      const under = slide.nodes[j]!
+      if (under.decoration || under.type !== 'shape') continue
+      const uf = (under as ShapeRenderNode).fill
+      if (uf.kind === 'none' || uf.kind === 'image') continue
+      if (uf.kind === 'gradient') {
+        if (
+          cx >= under.box.x && cx <= under.box.x + under.box.w &&
+          cy >= under.box.y && cy <= under.box.y + under.box.h
+        ) unknown = true
+        continue
+      }
+      const c = parseRenderColor(uf.color)
+      if (!c) continue
+      if (cx >= under.box.x && cx <= under.box.x + under.box.w && cy >= under.box.y && cy <= under.box.y + under.box.h)
+        bg = blendOver(c, bg)
+    }
+    const own = sn.fill
+    if (own.kind === 'solid') {
+      const c = parseRenderColor(own.color)
+      if (c) bg = blendOver(c, bg)
+    } else if (own.kind === 'gradient') {
+      unknown = true
+    }
+    if (unknown) return
+    let worst = Infinity
+    let worstColor = ''
+    for (const run of runs) {
+      const c = parseRenderColor(run.color)
+      if (!c) continue
+      const solid = blendOver(c, bg)
+      const ratio = contrastRatio(solid, bg)
+      if (ratio < worst) { worst = ratio; worstColor = run.color ?? '' }
+    }
+    if (worst < CONTRAST_MIN) {
+      const preview = textPreview(sn)
+      issues.push(
+        `Low contrast: text ${sn.sourceId}${preview ? ` "${preview}"` : ''} (${worstColor}) has ratio ${worst.toFixed(2)}:1 against its background — nearly invisible. Use dark text on light fills, or white text only on dark fills`,
+      )
+    }
+  })
+  return issues
+}
 
 /**
  * Audit one page's layout and return the list of problems (empty array = pass).
@@ -156,6 +275,13 @@ export function auditSlideLayout(slide: RenderSlide): string[] {
     if (!e.hasText || e.type !== 'shape' && e.type !== 'text') continue
     const node = (slide.nodes.find((n) => n.sourceId === e.id) ?? null) as ShapeRenderNode | null
     const lines = (node?.text?.lines ?? []).map((l) => l.runs.map((r) => r.text).join('').trim())
+    // Serialized-object leak: an object was stringified somewhere in the pipeline.
+    if (lines.some((l) => l.includes('[object Object]'))) {
+      issues.push(
+        `Broken text: ${label(e)} contains "[object Object]" — pass plain strings (or {title,desc} objects) as content items, never raw objects`,
+      )
+      continue
+    }
     const nonEmpty = lines.filter(Boolean)
     if (nonEmpty.length < 3) continue
     const bulleted = nonEmpty.filter((l) => /^[•·▪◦‣⁃-]\s+/.test(l)).length
@@ -168,13 +294,19 @@ export function auditSlideLayout(slide: RenderSlide): string[] {
     }
   }
 
+  // 5. Low contrast (text invisible against its reconstructed background)
+  for (const issue of checkContrast(slide)) {
+    if (issues.length >= MAX_ISSUES) break
+    issues.push(issue)
+  }
+
   return issues.slice(0, MAX_ISSUES)
 }
 
 /** Format the audit result as trailing text for a tool's return value. */
 export function formatAudit(issues: string[], round?: string): string {
   if (issues.length === 0)
-    return '\n<layout-audit>✅ Passed: no overlap/out-of-bounds/text overflow.</layout-audit>'
+    return '\n<layout-audit>✅ Passed: no overlap/out-of-bounds/text overflow/contrast issues.</layout-audit>'
   const head = `\n<layout-audit>⚠️ Found ${issues.length} issue(s):\n`
   const body = issues.map((s) => `- ${s}`).join('\n')
   const tail = round

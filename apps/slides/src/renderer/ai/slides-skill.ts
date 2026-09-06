@@ -98,6 +98,7 @@ export interface DeckAccess {
     insertedIndex?: number
     error?: string
     fallbackReason?: string
+    auditIssues?: string[]
     imageFailures?: { page: number; url: string }[]
   }>
   /** Redo one slide in place: single-page HTML → convert → replace slide slideIndex (other slides untouched; undoable with ⌘Z). */
@@ -269,7 +270,7 @@ Work in three clear phases — PLAN, BUILD, QC — and do not loop back and fort
 ## Content density (fit on the first try — avoids slow re-tidy loops)
 - Title ≤ 45 chars. Bullets ≤ 5 per slide, each ≤ 90 chars.
 - stats: max 4 items; each big ≤ 8 chars (e.g. "31%", "Rp 1,2 T"), each desc ≤ 28 chars.
-- cards: max 3; card title ≤ 22 chars, desc ≤ 60 chars.
+- cards: max 3; card title ≤ 22 chars, desc 30–60 chars (ALWAYS fill desc — a card without one looks broken).
 - rows: max 5; title ≤ 30 chars, desc ≤ 70 chars.
 - If you have more content than fits, split it across slides — do NOT cram text into one slide.
 
@@ -1365,6 +1366,11 @@ export function createSlidesSkill(access: DeckAccess): AgentSkill {
             if (gen.imageFailures && gen.imageFailures.length > 0) {
               const pages = [...new Set(gen.imageFailures.map((f) => f.page + 1))].join(', ')
               result.output = `${result.output}\n\n⚠️ Foto gagal dimuat pada slide ${pages} — gambar dilewati (kotak kosong). Coba generate ulang slide tersebut.`
+            }
+            if (gen.auditIssues && gen.auditIssues.length > 0) {
+              result.output = `${result.output}\n<layout-audit>⚠️ ${gen.auditIssues.length} issue(s):\n${gen.auditIssues
+                .map((s) => `- ${s}`)
+                .join('\n')}\n→ Fix these now with execute_slide_script (contrast: set text to a dark color on light fills / white on dark fills; overflow: enlarge box or shorten text). Do not move on before the audit is clean.</layout-audit>`
             }
           } catch {
             // fallback: try append mode

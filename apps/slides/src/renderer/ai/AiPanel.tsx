@@ -877,6 +877,11 @@ export function AiPanel({
               appendedFrom,
               ...(insertedIndex !== undefined ? { insertedIndex } : {}),
             })
+            // Deterministic audit on every generation landing (cards/bullets/etc. get the
+            // same contrast/overflow feedback loop that execute_slide_script already had).
+            const auditIssues = res.slides
+              .flatMap((s, i) => auditSlideLayout(s).map((msg) => `slide ${i + 1}: ${msg}`))
+              .slice(0, 8)
             return {
               ok: true,
               pages: res.slides.length,
@@ -884,6 +889,7 @@ export function AiPanel({
               insertedIndex,
               fallbackReason,
               imageFailures,
+              auditIssues,
             }
           }
           return {

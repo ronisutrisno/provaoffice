@@ -16,6 +16,10 @@ import { THEME_PRESETS } from '../src/renderer/ai/slide-templates'
 
 const FIT_WIDTH_PX = 1280
 
+/** A valid 1×1 PNG data URL — downloadImageToDataUrl fetches data: URLs fine, so the
+ *  image-present (narrow content) layout path is actually exercised by the audit. */
+const PHOTO = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=='
+
 /** Worst-case content per layout, at the density limits the prompt allows. */
 const CASES: Array<{ name: string; slide: SlideContent }> = [
   {
@@ -32,7 +36,7 @@ const CASES: Array<{ name: string; slide: SlideContent }> = [
         'Kesenjangan infrastruktur antara kota dan desa masih menjadi tantangan',
       ],
       layout: 'title_content',
-      imageUrl: 'https://example.com/photo.jpg',
+      imageUrl: PHOTO,
       imageSide: 'right',
     },
   },
@@ -57,7 +61,7 @@ const CASES: Array<{ name: string; slide: SlideContent }> = [
         { title: 'Kota Otonom', desc: 'Transportasi otonom, jaringan energi terdistribusi, dan tata kelola data warga membentuk kota yang adaptif.' },
       ],
       layout: 'cards',
-      imageUrl: 'https://example.com/photo.jpg',
+      imageUrl: PHOTO,
       imageSide: 'left',
     },
   },
@@ -73,7 +77,7 @@ const CASES: Array<{ name: string; slide: SlideContent }> = [
         { big: '945 TWh', desc: 'Listrik data center' },
       ],
       layout: 'stats',
-      imageUrl: 'https://example.com/photo.jpg',
+      imageUrl: PHOTO,
       imageSide: 'right',
     },
   },
@@ -118,7 +122,7 @@ const CASES: Array<{ name: string; slide: SlideContent }> = [
         { title: 'PMBOK 8 (2025–26)', desc: '6 prinsip & 8 praktik yang lebih konkret. Struktur Principles – Performance – Practices. Integrasi agile/hybrid lebih dalam. Topik baru: AI digital, sustainability.' },
       ],
       layout: 'comparison',
-      imageUrl: 'https://example.com/photo.jpg',
+      imageUrl: PHOTO,
       imageSide: 'right',
     },
   },
@@ -151,9 +155,8 @@ describe('golden layout audit (worst-case content, all presets)', () => {
     it(`all layouts pass the audit with theme preset "${presetName}"`, async () => {
       const slides = CASES.map((c) => ({ ...c.slide, theme: THEME_PRESETS[presetName] }))
       const { bytes, imageFailures } = await slideContentToPptxBytes(slides)
-      // Worst-case content must not break image handling (example.com URLs fail to
-      // download in tests — expected and reported, not thrown).
-      expect(imageFailures.length).toBeGreaterThan(0)
+      // All photos use a valid data URL — none may fail to embed.
+      expect(imageFailures).toEqual([])
       const opened = await openPptx(bytes)
       opened.deck.slides.forEach((s, i) => {
         const rendered = buildRenderSlide(s, opened.deck.size, {
@@ -166,4 +169,45 @@ describe('golden layout audit (worst-case content, all presets)', () => {
       })
     })
   }
+})
+
+describe('contrast audit', () => {
+  it('flags white text on a light card tint (the IFRS regression)', async () => {
+    // Simulates the model drawing custom cards via execute_slide_script: a light
+    // tinted rect with WHITE text — the exact unreadable pattern from the report.
+    const pptx = new (await import('pptxgenjs')).default()
+    pptx.defineLayout({ name: 'WIDE', width: 13.33, height: 7.5 })
+    pptx.layout = 'WIDE'
+    const s = pptx.addSlide()
+    s.background = { color: 'FFFFFF' }
+    s.addShape('rect', { x: 0.7, y: 1.5, w: 3.9, h: 3.6, fill: { color: '1B4332', transparency: 92 } })
+    s.addText('IFRS S1', { x: 0.95, y: 1.75, w: 3.4, h: 1.1, fontSize: 21, color: 'FFFFFF', bold: true })
+    const bytes = new Uint8Array(await pptx.write({ outputType: 'arraybuffer' }) as ArrayBuffer)
+    const opened = await openPptx(bytes)
+    const rendered = buildRenderSlide(opened.deck.slides[0]!, opened.deck.size, {
+      fitWidthPx: FIT_WIDTH_PX,
+      media: () => undefined,
+      slideNo: 1,
+    })
+    const issues = auditSlideLayout(rendered)
+    expect(issues.some((i) => i.startsWith('Low contrast'))).toBe(true)
+  })
+
+  it('passes white text on a dark panel (legitimate design)', async () => {
+    const pptx = new (await import('pptxgenjs')).default()
+    pptx.defineLayout({ name: 'WIDE', width: 13.33, height: 7.5 })
+    pptx.layout = 'WIDE'
+    const s = pptx.addSlide()
+    s.background = { color: 'FFFFFF' }
+    s.addShape('rect', { x: 0.7, y: 1.5, w: 3.9, h: 3.6, fill: { color: '1B4332' } })
+    s.addText('IFRS S1', { x: 0.95, y: 1.75, w: 3.4, h: 1.1, fontSize: 21, color: 'FFFFFF', bold: true })
+    const bytes = new Uint8Array(await pptx.write({ outputType: 'arraybuffer' }) as ArrayBuffer)
+    const opened = await openPptx(bytes)
+    const rendered = buildRenderSlide(opened.deck.slides[0]!, opened.deck.size, {
+      fitWidthPx: FIT_WIDTH_PX,
+      media: () => undefined,
+      slideNo: 1,
+    })
+    expect(auditSlideLayout(rendered)).toEqual([])
+  })
 })
