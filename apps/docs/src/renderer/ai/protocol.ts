@@ -78,6 +78,7 @@ export const COMMANDS_GUIDE = [
   'BC-2 A "whole document" formatting operation only changed docParagraph and missed docHeading/docListItem;',
   'BC-3 Addressing by word/character position (no such addressing exists); use block indexes or text containment instead;',
   'BC-4 Using replaceAllText sentence by sentence for rewrites such as translation/abbreviation; use the replace_blocks tool instead;',
+  'BC-5 Headers and footers (page numbers like "— 1 —", running titles) are NOT body blocks: they never appear in the document block list and must never be recreated, copied, or moved into the body. If the user asks to edit the header/footer, tell them to use the header/footer area on the canvas instead. When polishing/reformatting, ignore footer-like text (short centered/right-aligned lines matching "— N —" or a bare page number) — do not treat it as document content.',
 ].join('\n')
 
 const HTML_RULES = [

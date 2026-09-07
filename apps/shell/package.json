@@ -1,7 +1,7 @@
 {
   "name": "@prova/shell",
   "productName": "PROVAOffice",
-  "version": "0.8.0",
+  "version": "0.8.1",
   "license": "Apache-2.0",
   "homepage": "https://github.com/provaoffice/provaoffice",
   "private": true,

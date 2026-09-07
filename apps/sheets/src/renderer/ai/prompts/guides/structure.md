@@ -12,6 +12,21 @@
 - `{op:"set_sheet_hidden", sheetId, hidden:true|false}` — hides/shows a worksheet; at least one sheet must stay visible.
 - `{op:"move_sheet", sheetId, position:1}` — moves to the 1-based tab position.
 
+## Multi-sheet workbook organization
+
+When a task legitimately needs multiple sheets (user asked for it, or the data model clearly requires it), plan the sheet set BEFORE creating any, and order tabs so the workbook reads like a report:
+
+1. **Ringkasan/Summary/Dashboard first** (tab 1) — the executive view: key figures, conclusions, navigation notes. Keep it small and formula-linked to the detail sheets (never hard-code numbers that exist elsewhere).
+2. **Input/Data sheets next** — raw or source data, one domain per sheet, named clearly (e.g. "Data Penjualan", "Data Karyawan").
+3. **Analysis/calculation sheets after the data** — pivot summaries, per-unit computations, working papers that feed the summary.
+4. **Reference/lookup sheets last** (master lists, assumptions, parameters).
+
+Rules:
+- Create sheets in reading order (Summary → Data → Analysis → Reference) so no move_sheet cleanup is needed; if order ends up wrong, fix with `{op:"move_sheet"}` at the end.
+- Every non-obvious sheet benefits from a one-line title in A1 (bold, larger font) stating what it contains.
+- Cross-sheet formulas are fine and preferred over duplicating data; reference the Data sheet, never copy its values into the Analysis sheet.
+- Don't over-split: a small workbook (≤ ~50 rows total) usually fits better in one sheet with clearly separated sections than in 4+ tabs.
+
 ## Sheet protection
 
 `{op:"protect_sheet", sheetId, protected:true|false}` — **layout-class**, can share a batch with content/format operations (exempt from the batching discipline below). Written into the file on save (passwords not supported); password-protected sheets cannot be unprotected. The editor itself does not enforce the lock.

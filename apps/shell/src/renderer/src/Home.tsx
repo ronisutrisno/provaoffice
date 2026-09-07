@@ -1858,7 +1858,7 @@ export function Home() {
         <AccountEntry onStatusChange={handleAccountStatus} />
         <div className="sidebar-version">
           <div>Developed by Proxsis-AI Research</div>
-          <div>Version: Beta-0.8.0</div>
+          <div>Version: Beta-0.8.1</div>
         </div>
       </aside>
 

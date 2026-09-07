@@ -39,7 +39,7 @@ export const GUIDE_CATALOG: Readonly<Record<string, GuideEntry>> = {
   },
   structure: {
     description:
-      'Structural changes: row/column insert-delete, sheet add/delete/duplicate/move/hide, sheet protection, two-batch discipline, automatic formula reference rewriting and #REF!',
+      'Structural changes: row/column insert-delete, sheet add/delete/duplicate/move/hide, multi-sheet workbook organization (tab order: Summary→Data→Analysis→Reference), sheet protection, two-batch discipline, automatic formula reference rewriting and #REF!',
     content: structureGuide,
   },
   charts: {

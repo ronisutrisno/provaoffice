@@ -25,6 +25,26 @@ import {
 
 const READ_MAX_CHARS = 24_000
 
+/**
+ * Footer-like content guard: AI polish/reformat must never copy header/footer
+ * content (page numbers "— 1 —", bare page numbers) into the document body.
+ * Detects HTML whose visible text is only footer-like short lines.
+ */
+const FOOTER_LINE_RE = /^(?:[-–—_=*\s]*\d{1,4}[-–—_=*\s]*|page \d+(?: of \d+)?|halaman \d+)$/i
+
+function looksLikeFooterContent(html: string): boolean {
+  const text = html
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&[a-z]+;/g, ' ')
+  const lines = text
+    .split(/\n+/)
+    .map((l) => l.trim())
+    .filter(Boolean)
+  if (lines.length === 0) return false
+  return lines.every((l) => FOOTER_LINE_RE.test(l) || l.length <= 4)
+}
+
 export const AGENT_TOOLS: AgentToolDef[] = [
   {
     name: 'get_document_context',
@@ -493,6 +513,11 @@ function executeSyncTool(
       const html = String(call.input.html ?? '')
       const echo = toolEchoError(html)
       if (echo) return fail(t('aiSumInsertContent'), echo)
+      if (looksLikeFooterContent(html))
+        return fail(
+          t('aiSumInsertContent'),
+          'Rejected: this content looks like header/footer material (page numbers, "— N —" lines). Headers and footers are not body blocks — never recreate them in the document body. Tell the user to edit the header/footer area on the canvas instead.',
+        )
       let nodes: ReturnType<typeof parseHtmlFragment>
       try {
         nodes = parseHtmlFragment(html, numIds)
@@ -531,6 +556,11 @@ function executeSyncTool(
       const html = String(call.input.html ?? '')
       const echo = toolEchoError(html)
       if (echo) return fail(t('aiSumReplaceContent'), echo)
+      if (looksLikeFooterContent(html))
+        return fail(
+          t('aiSumReplaceContent'),
+          'Rejected: this content looks like header/footer material (page numbers, "— N —" lines). Headers and footers are not body blocks — never recreate them in the document body. Tell the user to edit the header/footer area on the canvas instead.',
+        )
       let nodes: ReturnType<typeof parseHtmlFragment>
       try {
         nodes = parseHtmlFragment(html, numIds)
