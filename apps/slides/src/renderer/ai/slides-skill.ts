@@ -236,42 +236,38 @@ Work in three clear phases — PLAN, BUILD, QC — and do not loop back and fort
 - Fix any problem found with the edit tools (set_element_text / execute_slide_script / set_slide_background), then confirm the deck is ready.
 - Do not re-run the whole build; only patch the specific slide that has an issue.
 
-## Layout types for add_slide_with_content
-- title_content: Title + bullet points. content = ["bullet 1", "bullet 2", ...]
-- cards: Three cards with title+description. content = [{title:"X", desc:"Y"}, ...]
-- rows: List with markers. content = [{title:"X", desc:"Y"}, ...]
-- stats: Big number highlights. content = [{big:"$41T", desc:"Aset global ESG"}, ...]
-- timeline: Horizontal timeline with alternating labels. content = [{title:"2020", desc:"Awal transformasi"}, ...] (max 5 steps)
-- quote: Pull quote. content = ["Teks kutipan di sini"], intro = attribution (nama/sumber)
-- big_number: One hero figure. content = ["31%"], intro = caption penjelas
-- comparison: Two panels (before/after, problem/solution). content = [{title:"Kenyataan", desc:"..."}, {title:"Respons", desc:"..."}]
-- two_column: Two columns of text. content = ["left column text", "right column text"]
-- section_header: Full-color section divider. content = []
-- agenda: Table of contents. content = ["Section 1", "Section 2", ...]
-- blank: Empty slide for custom content.
+## Layout types for add_slide_with_content (house style — Georgia everywhere, rounded boxes, 3 color sets)
+- numbered_list (DEFAULT): rounded rows with big 01/02 numbers + accent bar; content = ["poin"] or [{title,desc}]; max 5 rows. Use for lists, steps, analysis, recaps.
+- cards: 2-3 uniform white cards (colored band + dot + title + desc); content = [{title,desc}]; max 3.
+- stats: up to 4 white cards with big Georgia number; content = [{big:"Rp335T", desc:"..."}].
+- callout: quote banner (brand box + accent bar); content = ["kutipan"], intro = attribution.
+- agenda: numbered table of contents; content = ["Bab 1", ...]. ALWAYS use this layout for agenda/TOC slides.
+- business_case: THE RICHEST layout — KEY MESSAGE banner + contrast cards (white vs dark) + optional styled table. Use as PRIORITY for recommendation, solution, strategy, evaluation, KPI, findings, before/after slides. content = ONE dict payload: [{variant:"full", badge:"REKOMENDASI AKHIR", key_message:"...", background:"...", business_problem:"...", solution:["para 1","para 2"], table_title:"CURRENT vs FUTURE", table:{headers:["Dimensi","Current State","Future State","Delta"], rows:[["Waktu","12 hari","2-3 hari","-80%"]]}}]. Three variants (rotate when the deck has >= 2 business_case slides): "full" (final recommendation), "solution" (solution card + 3 benefits: benefits:[{title,desc}]), "metrics" (3 big numbers: metrics:[{big,desc}] + challenge/impact cards). All fields optional except key_message or background; table max 5 rows; keep each text field <= 200 chars.
+- section_header: chapter divider slide (brand background + photo panel + big Georgia title). MANDATORY at the start of every new chapter/section — the deck must have one between chapters; using an eyebrow label is NOT a substitute.
+- closing: thank-you slide. blank: escape hatch, avoid.
+- Legacy names (title_content, two_column, rows, timeline, comparison, quote, big_number) are still accepted and silently redirected — prefer the new names.
 
-## Images (REQUIRED)
-- ALWAYS provide image_query with English keywords for EVERY content slide.
-- Pick keywords that match the slide topic, e.g. "solar panels green energy", "corporate meeting boardroom", "stock market chart", "recycling plastic waste".
-- The image is fetched from Pixabay automatically and placed on the slide.
-- VARY image_side across slides: alternate 'left' and 'right' so the deck does not look monotonous (e.g. slide 2 right, slide 3 left, slide 4 right, ...). Only use the same side twice in a row when the layout genuinely needs it.
-- Do NOT skip image_query — every content slide must have a photo.
+## Images — NEVER force them
+- Images are OPTIONAL and only added when there is room: <= 3 short rows on the slide. The system auto-adds a photo to sparse slides without one.
+- Set image_query (short English keywords) only for sparse numbered_list/cards slides; leave it empty for dense slides, stats, callout, business_case.
+- Alternate image_side left/right across slides that do have images.
 
 ## Rules
 - Use real data from web_search — never fabricate numbers.
 - Use Indonesian language unless user requests otherwise.
-- ALWAYS pass theme_preset in create_presentation, chosen to fit the deck's subject — do NOT default to corporate for everything: healthcare/medical/sustainability/agriculture → forest; technology/data/AI/startups → ocean; culture/history/lifestyle/travel → sunset; project management/operations/audit/finance → slate; general business → corporate. Different topics should visibly look different.
-- Create rich, varied slides — mix layouts (cards, stats, rows, two_column, title_content, timeline, quote, big_number, comparison) for visual interest, and do NOT repeat the same layout on consecutive slides. Use timeline for chronological stories, comparison for before/after or problem/solution, big_number for one striking figure, quote for expert statements.
-- Each slide should have a clear title and concise content.
+- theme_preset: pick maroon (business/government/finance — the brand default), navy (technology/data/corporate), or green (health/sustainability/education). Use ONE set for the whole deck.
+- VARIASI LAYOUT (hard rule): plan the layout sequence BEFORE building. In a deck with >= 6 content slides use at least 4 different layouts; never the same layout more than 2x in a row; numbered_list + cards together max ~60% of content slides — the rest must be stats / callout / business_case variants.
+- JUDUL = JANJI: if a title says "N Pilar / N Langkah / N Rekomendasi", the content MUST list all N items (use the table/benefits/metrics fields). A title promising 6 pillars without the six items is a broken slide.
+- Every slide carries at least 3 facts. desc/bullets must be informative (10-25 words, factual, with numbers/terms) — never 2-3 word fragments. A slide with only a title + one intro line is rejected by the system.
+- Do NOT ask the user clarifying questions or show surveys/questionnaires mid-generation — decide language, audience, slide count and style yourself from the request, then build directly.
 - Always start with create_presentation, end with add_closing.
-- Keep bullet points short (1-2 lines each).
 - For stats layout, use real numbers from web_search.
 
-## Content density (fit on the first try — avoids slow re-tidy loops)
-- Title ≤ 45 chars. Bullets ≤ 5 per slide, each ≤ 90 chars.
-- stats: max 4 items; each big ≤ 8 chars (e.g. "31%", "Rp 1,2 T"), each desc ≤ 28 chars.
-- cards: max 3; card title ≤ 22 chars, desc 30–60 chars (ALWAYS fill desc — a card without one looks broken).
-- rows: max 5; title ≤ 30 chars, desc ≤ 70 chars.
+## Content density (fit on the first try)
+- Title <= 55 chars (Georgia, auto-fits). numbered_list max 5 rows; each desc <= 160 chars.
+- stats max 4 items; big <= 10 chars; desc <= 90 chars.
+- cards max 3; EACH card needs a desc of 10-25 words.
+- business_case: keep each text field <= 200 chars so the payload never truncates; table max 5 rows x 4 cols.
 - If you have more content than fits, split it across slides — do NOT cram text into one slide.
 
 ## Readability & contrast (IMPORTANT)
@@ -633,37 +629,6 @@ const TOOLS: AgentToolDef[] = [
     },
   },
   {
-    name: 'ask_clarification',
-    description:
-      "[Call before creating a whole new deck] Shows a questionnaire card with options, letting the user make key choices for this deck (audience/scenario/tone/focus etc.); the user's choices directly determine the deck's Core Hook and style. Questions must target the specific topic, each being a real trade-off (options represent different directions). Ask 2–4 questions, ≤5 options each. After calling, wait for the user to finish choosing in the card and generate once you have the answers. Don't repeat the questions in your reply text.",
-    inputSchema: {
-      type: 'object',
-      properties: {
-        questions: {
-          type: 'array',
-          description: 'Question list (2–4 questions)',
-          items: {
-            type: 'object',
-            properties: {
-              id: { type: 'string', description: 'Unique question id (short English/pinyin)' },
-              label: { type: 'string', description: 'Question text' },
-              description: { type: 'string', description: 'Optional one-line note' },
-              options: {
-                type: 'array',
-                items: { type: 'string' },
-                description:
-                  'Options (≤5); the frontend automatically appends "Decide for me" and "Other"',
-              },
-              multi: { type: 'boolean', description: 'Multi-select (single-select by default)' },
-            },
-            required: ['id', 'label', 'options'],
-          },
-        },
-      },
-      required: ['questions'],
-    },
-  },
-  {
     name: 'plan_deck',
     description:
       "[When creating a whole new deck, call after researching material/images and before generate_deck] Outputs a structured plan: the Core Hook + unified style scheme + each page's title/content brief/layout/image keywords. Think the whole deck through first, to avoid starting strong and fizzling out. The plan is echoed to the user.",
@@ -696,13 +661,13 @@ const TOOLS: AgentToolDef[] = [
               layout: {
                 type: 'string',
                 description:
-                  'Layout (e.g. three_column_cards/hero_big_number/two_column/timeline/left_text_right_image); content pages must not repeat',
+                  'Layout: numbered_list / cards / stats / callout / business_case (variant full|solution|metrics) / agenda / section_header; content pages must not repeat the same layout',
               },
               image_queries: {
                 type: 'array',
                 items: { type: 'string' },
                 description:
-                  "English image-search keywords for this page's image slots (one per slot; [] for no images)",
+                  "English image-search keywords for this page's image slots (one per slot; [] for no images — only use images on sparse pages with room)",
               },
             },
             required: ['title', 'brief', 'layout'],

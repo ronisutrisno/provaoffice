@@ -148,6 +148,75 @@ const CASES: Array<{ name: string; slide: SlideContent }> = [
       layout: 'agenda',
     },
   },
+  {
+    name: 'business_case full (banner + 2 cards + table, max)',
+    slide: {
+      title: 'Rekomendasi: PostgreSQL 18 untuk Kasus Ini',
+      layout: 'business_case',
+      bc: {
+        variant: 'full',
+        badge: 'REKOMENDASI AKHIR',
+        key_message: 'Untuk profil DB 2,4 GB / 56 tabel: PostgreSQL 18 adalah pilihan paling pas tanpa kompromi apa pun.',
+        background: 'Diskusi menelusuri sumber pendapatan Oracle (lisensi per core ± support 22%/tahun ± cloud), klaim gratis total Postgres, dan kelayakan skala PG18.',
+        business_problem: 'Keputusan memilih engine sering terdistorsi persepsi Oracle lebih kuat atau lebih cepat, padahal di skala kecil semua engine terasa identik.',
+        solution: [
+          'Headroom PG18 untuk kasus ini ±1.000x lipat — titik butuh arsitektur khusus baru muncul sekitar 1–2 TB workload OLTP biasa.',
+          'Tetap jalankan disiplin dasar: backup terjadwal + uji restore, pantangi tabel dominan via pg_total_relation_size.',
+          'Distributed SQL atau Oracle baru masuk akal >10–50 TB — bagi mayoritas aplikasi tidak akan pernah terjadi.',
+        ],
+        table_title: 'ORACLE VS POSTGRESQL — RINGKASAN',
+        table: {
+          headers: ['Dimensi', 'Oracle', 'PostgreSQL 18', 'Delta'],
+          rows: [
+            ['Lisensi', '$37.585/core + opsi', '$0', '$0'],
+            ['Support tahunan', '±22% nilai lisensi, naik terus', '$0 (opsional: EDB/Percona)', 'Gratis'],
+            ['Audit', 'Risiko temuan jutaan dolar', 'Tidak ada', 'Nihil'],
+            ['Skala nyaman Anda', 'Overkill total', 'Sampai ±1–2 TB tanpa arsitektur khusus', '1000x'],
+          ],
+        },
+      },
+    },
+  },
+  {
+    name: 'business_case solution (dark card + 3 benefits)',
+    slide: {
+      title: 'Solusi: Moratorium Bersyarat + Sertifikasi Bertahap',
+      layout: 'business_case',
+      bc: {
+        variant: 'solution',
+        badge: 'SOLUSI',
+        key_message: 'Moratorium bersyarat di daerah berinsiden, 6 pilar perbaikan dalam 90 hari, lanjutkan hanya untuk SPPG lolos sertifikasi.',
+        solution: [
+          'Pendek (0–3 bulan): moratorium bersyarat, investigasi KLB tuntas BPOM dan Polri, evaluasi distribusi sesuai mandat Menko Pangan.',
+          'Menengah (3–12 bulan): Perpres atau PP standar MBG, sertifikasi higiene 100 persen SPPG, dashboard real-time.',
+        ],
+        benefits: [
+          { title: 'Hemat', desc: 'Penghematan 40% biaya lisensi tahunan dari konsolidasi vendor.' },
+          { title: 'Cepat', desc: 'Siklus laporan 12 hari kerja jadi 2–3 hari dengan validasi otomatis.' },
+          { title: 'Aman', desc: 'Audit trail lengkap setiap angka tersitasi ke dokumen sumber.' },
+        ],
+      },
+    },
+  },
+  {
+    name: 'business_case metrics (3 numbers + 2 cards)',
+    slide: {
+      title: 'Dampak: Angka yang Harus Dikejar',
+      layout: 'business_case',
+      bc: {
+        variant: 'metrics',
+        badge: 'KPI',
+        key_message: 'Tiga target ukur yang dapat langsung diadopsi BGN, BPOM, dan pemerintah daerah dalam 6–12 bulan ke depan.',
+        metrics: [
+          { big: '4 jam', desc: 'Batas jeda masak-ke-konsumsi sesuai standar BPOM' },
+          { big: '100%', desc: 'SPPG laik higiene, halal, dan aman pangan' },
+          { big: '21', desc: 'Program pengawasan BPOM 2027 diawasi eksekusinya' },
+        ],
+        challenge: 'Keracunan berulang di lima daerah dengan standar dapur dan pengawasan yang belum memadai.',
+        impact: 'Kepercayaan publik terhadap program pulih dan ekspansi bisa dilanjutkan dengan aman.',
+      },
+    },
+  },
 ]
 
 describe('golden layout audit (worst-case content, all presets)', () => {

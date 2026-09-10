@@ -2,6 +2,8 @@ import type { AgentToolDef } from '../../shared/ipc'
 import {
   DEFAULT_THEME,
   THEME_PRESETS,
+  redirectLayout,
+  type BusinessCasePayload,
   type SlideContent,
   type SlideTheme,
 } from './slide-templates'
@@ -31,57 +33,51 @@ export const PROVA_PPTX_TOOLS: AgentToolDef[] = [
   {
     name: 'create_presentation',
     description:
-      'Create a new presentation. Generates a cover slide and initializes the deck. Always call this first. Pick a theme_preset by name (recommended) — do not invent colors. Custom theme colors are allowed only when the user explicitly asks for specific colors.',
+      'Create a new presentation. Generates a cover slide (maroon/brand background + optional photo panel) and initializes the deck. Always call this first. Pick a theme_preset by name — do not invent colors.',
     inputSchema: {
       type: 'object',
       properties: {
         filename: { type: 'string', description: 'Presentation title (used as deck name)' },
         title: { type: 'string', description: 'Cover slide title' },
         subtitle: { type: 'string', description: 'Cover slide subtitle (optional)' },
-        image_query: { type: 'string', description: 'English Pixabay keywords for the COVER photo (recommended, e.g. "medical students lecture hall classroom"). Pick something that reflects the deck topic — do not rely on the generic fallback.' },
+        eyebrow: { type: 'string', description: 'Small label above cover title (optional, default "PRESENTASI")' },
+        image_query: { type: 'string', description: 'Optional English Pixabay keywords for the cover photo panel (right side ~38%). Cover works beautifully without a photo too.' },
         theme_preset: {
           type: 'string',
-          enum: ['corporate', 'ocean', 'forest', 'sunset', 'slate'],
-          description: 'Curated color palette for the whole deck. corporate = navy/blue (default, business), ocean = deep blue/amber, forest = green/gold, sunset = plum/terracotta, slate = gray-green/coral. Pick one that fits the topic and use it for the whole deck.',
-        },
-        theme: {
-          type: 'object',
-          description: 'Custom color override (only when the user explicitly requests specific colors): { primary, secondary, accent, background } as hex colors. Keep background light (or a dark brand color, not black) so text stays readable.',
-          properties: {
-            primary: { type: 'string' },
-            secondary: { type: 'string' },
-            accent: { type: 'string' },
-            background: { type: 'string' },
-          },
+          enum: ['maroon', 'navy', 'green'],
+          description:
+            'Color set for the whole deck (house style is identical, only the hue changes). maroon = deep maroon/brand default (business, government, finance); navy = dark navy blue (technology, corporate, data); green = forest green (health, sustainability, agriculture, education). Default maroon.',
         },
       },
-      required: ['filename', 'title', 'theme_preset'],
+      required: ['filename', 'title'],
     },
   },
   {
     name: 'add_slide_with_content',
     description:
-      'Add a content slide to the presentation. Layouts: title_content (bullets+image), two_column (2 text columns), cards (3 cards), rows (list with markers), stats (up to 4 big numbers), timeline (horizontal steps, alternating above/below), quote (pull quote; content=[quote text], intro=attribution), big_number (one hero figure; content=[number], intro=caption), comparison (2 panels e.g. before/after), section_header, closing, agenda, blank. Content format: strings for bullets, {title,desc}[] for cards/rows/timeline/comparison, {big,desc}[] for stats. IMPORTANT: always provide image_query with English keywords for EVERY content slide so a relevant photo is placed on the slide. Keep content SHORT so it fits without shrinking: stats max 4 items, each big ≤ 8 chars and desc ≤ 28 chars; cards max 3, EACH card needs a desc of 30–60 chars; rows max 5, desc ≤ 70 chars; timeline max 5 steps, title ≤ 18 chars, desc ≤ 40 chars; comparison exactly 2 panels, desc ≤ 120 chars; title ≤ 45 chars. Readability: keep text high-contrast against the background — never use a black background; dark slides use a dark brand color with white text, content slides use a light background with dark text.',
+      'Add a content slide. House-style layouts (all native & editable, Georgia font): numbered_list (default — rounded rows with big 01/02 numbers + accent bar; content = ["text"] or [{title,desc}], max 5), cards (2-3 uniform white cards with colored band; content=[{title,desc}] max 3), stats (up to 4 big-number cards; content=[{big,desc}]), callout (quote banner; content=["quote text"], intro=attribution), agenda (numbered table of contents; content=["item",...]), business_case (RICHEST layout — banner KEY MESSAGE + contrast cards + optional table; content=[{...payload dict}] with fields variant full|solution|metrics, badge, key_message, background, business_problem, solution[], table_title, table{headers,rows[]}, benefits[], metrics[], challenge, impact), section_header (chapter divider — call between chapters), closing, blank. The old layouts title_content/two_column/rows/timeline/comparison/quote/big_number are accepted but redirected to the new equivalents. Images are NOT required: they are added only when the slide is sparse (<=3 short rows) and there is room — set image_query only for such slides; never force an image. Content density: every slide must carry >= 3 facts; desc items must be informative 10-25 words; a title promising N items must list all N in the content.',
     inputSchema: {
       type: 'object',
       properties: {
         title: { type: 'string', description: 'Slide title' },
         content: {
           type: 'array',
-          description: 'Content items. Format: ["bullet1","bullet2"] for bullets, [{"title":"X","desc":"Y"}] for cards/rows, [{"big":"$30T","desc":"value"}] for stats',
+          description:
+            'Content items. ["bullet"] or [{title,desc}] for numbered_list/cards; [{big,desc}] for stats; ["quote"] for callout; for business_case pass ONE dict payload: [{variant:"full",badge:"...",key_message:"...",background:"...",business_problem:"...",solution:["p1","p2"],table_title:"...",table:{headers:[...],rows:[[...]]}}]',
           items: { type: 'string' },
         },
         layout: {
           type: 'string',
-          description: 'Layout type: title_content (default), two_column, cards, rows, stats, section_header, closing, agenda, blank',
+          description:
+            'numbered_list (default), cards, stats, callout, agenda, business_case, section_header, closing, blank',
         },
-        eyebrow: { type: 'string', description: 'Small label above title (e.g. "01 · PENGANTAR")' },
-        intro: { type: 'string', description: 'Intro paragraph below title' },
+        eyebrow: { type: 'string', description: 'Small caps label above title (e.g. "01 · LATAR BELAKANG")' },
+        intro: { type: 'string', description: 'One-line framing sentence — rendered as a KEY MESSAGE banner' },
         subtitle: { type: 'string', description: 'Subtitle for closing layout' },
-        image_query: { type: 'string', description: 'REQUIRED. English Pixabay search keywords for the slide photo, e.g. "solar panels green energy" or "corporate meeting boardroom". Always provide this for every content slide.' },
-        image_side: { type: 'string', enum: ['left', 'right'], description: 'Which side the photo sits on. VARY this across slides for visual rhythm: alternate left/right so the deck does not look monotonous. Default right.' },
+        image_query: { type: 'string', description: 'Optional English Pixabay keywords. ONLY for sparse slides (<=3 short rows). Leave empty when content is dense — the system auto-adds a photo to sparse slides without one.' },
+        image_side: { type: 'string', enum: ['left', 'right'], description: 'Photo side; alternate across slides. Default right.' },
       },
-      required: ['title', 'content', 'layout', 'image_query'],
+      required: ['title'],
     },
   },
   {
@@ -125,39 +121,48 @@ async function fetchPixabayImage(query: string): Promise<string | undefined> {
 }
 
 /**
- * Topic-based theme fallback when the model omits/misspells theme_preset —
- * prevents every deck from defaulting to the same corporate navy.
+ * Topic-based theme fallback when the model omits/misspells theme_preset.
+ * Only three house-style color sets exist now: maroon / navy / green.
  */
 function deriveThemePreset(title: string): string {
   const t = title.toLowerCase()
-  if (/health|medis|kesehatan|dokter|ppds|rs\b|rumah sakit|patient|pasien/.test(t)) return 'forest'
-  if (/climate|energy|sustainab|green|lingkungan|karbon|esg|pertanian/.test(t)) return 'forest'
-  if (/tech|digital|ai\b|data|software|startup|innovation|teknologi/.test(t)) return 'ocean'
-  if (/culture|budaya|sejarah|history|lifestyle|seni|art|wisata|travel/.test(t)) return 'sunset'
-  if (/project|pmbok|manajemen|management|pmi|operations|audit|keuangan|finance/.test(t)) return 'slate'
-  return 'corporate'
+  if (/health|medis|kesehatan|dokter|rs\b|rumah sakit|patient|pasien|climate|energy|sustainab|green|lingkungan|karbon|esg|pertanian|education|pendidikan|sekolah/.test(t)) return 'green'
+  if (/tech|digital|ai\b|data|software|startup|innovation|teknologi|market|invest|finance|stock|pasar|investasi|project|manajemen|management|pmi|operations|audit|keuangan|finance/.test(t)) return 'navy'
+  return 'maroon'
 }
 
-/** Fallback English Pixabay keywords derived from the slide title — used only when the
- * model omits image_query AND the layout benefits from a photo (cover/section/title_content). */
-function deriveImageQuery(title: string, layout: string): string | undefined {
-  if (layout !== 'title' && layout !== 'section_header' && layout !== 'title_content') return undefined
+/** Auto Pixabay keywords for SPARSE slides only (<=3 short rows) — never forced on dense slides. */
+function deriveImageQuery(title: string): string {
   const t = title.toLowerCase()
   const map: Array<[RegExp, string]> = [
     [/esg|environment|sustainab|green|climate|karbon|lingkungan/, 'green energy sustainability'],
     [/social|human|people|community|diversity|sosial/, 'people community teamwork'],
     [/governance|corporate|company|management|tata kelola/, 'corporate meeting boardroom'],
     [/market|invest|finance|stock|pasar|investasi/, 'stock market finance'],
-    [/indonesia|jakarta|nusantara/, 'indonesia jakarta city'],
+    [/indonesia|jakarta|nusantara/, 'indonesia jakarta city skyline'],
     [/energy|solar|wind|renewable|energi/, 'solar panels renewable energy'],
-    [/chart|data|statistik|grafik/, 'data analytics chart'],
+    [/chart|data|statistik|grafik|kpi|angka|metric/, 'data analytics dashboard'],
     [/tech|digital|ai|teknologi/, 'technology digital innovation'],
-    [/health|medis|kesehatan/, 'healthcare medical'],
-    [/education|learning|pendidikan/, 'education learning students'],
-    [/tren|trend|2026|2025|proyeksi/, 'business growth trend'],
+    [/health|medis|kesehatan|keracunan|pangan|food/, 'food safety hygiene kitchen'],
+    [/education|learning|pendidikan|sekolah/, 'education learning students classroom'],
+    [/tren|trend|2026|2025|proyeksi|roadmap/, 'business growth strategy planning'],
   ]
   for (const [re, kw] of map) if (re.test(t)) return kw
-  return 'business presentation'
+  return 'professional business meeting'
+}
+
+/** Count renderable facts in content — dense slides must not get an image. */
+function contentVolume(content: SlideContent['content']): { n: number; chars: number } {
+  const items = Array.isArray(content) ? content : []
+  let chars = 0
+  for (const c of items) {
+    if (typeof c === 'string') chars += c.length
+    else if (c && typeof c === 'object') {
+      const o = c as Record<string, unknown>
+      chars += String(o.title ?? o.big ?? '').length + String(o.desc ?? '').length
+    }
+  }
+  return { n: items.length, chars }
 }
 
 export async function executeProvaTool(
@@ -169,24 +174,15 @@ export async function executeProvaTool(
       const title = String(input.title ?? '').trim()
       if (!title) return { output: 'title is required', summary: 'Error: title required' }
       const subtitle = String(input.subtitle ?? '').trim()
+      const eyebrow = String(input.eyebrow ?? '').trim() || undefined
       currentDeckName = String(input.filename ?? title).trim()
-      // Curated preset first (recommended path); custom colors only as an explicit override.
-      // Unknown/missing preset name → derive from the deck topic instead of always corporate.
       const presetName = String(input.theme_preset ?? '').trim().toLowerCase()
-      const preset = THEME_PRESETS[presetName] ?? THEME_PRESETS[deriveThemePreset(title)] ?? DEFAULT_THEME
-      currentTheme = { ...preset }
-      if (input.theme && typeof input.theme === 'object') {
-        const th = input.theme as Record<string, string>
-        if (th.primary) currentTheme.primary = th.primary
-        if (th.secondary) currentTheme.secondary = th.secondary
-        if (th.accent) currentTheme.accent = th.accent
-        if (th.background) currentTheme.background = th.background
-      }
-      const coverQuery = String(input.image_query ?? '').trim() || deriveImageQuery(title, 'title')
+      currentTheme = { ...(THEME_PRESETS[presetName] ?? THEME_PRESETS[deriveThemePreset(title)] ?? DEFAULT_THEME) }
+      const coverQuery = String(input.image_query ?? '').trim()
       const coverImage = coverQuery ? await fetchPixabayImage(coverQuery) : undefined
-      currentSlides = [{ title, subtitle, content: [], layout: 'title', imageUrl: coverImage, theme: { ...currentTheme } }]
+      currentSlides = [{ title, subtitle, eyebrow, content: [], layout: 'title', imageUrl: coverImage, theme: { ...currentTheme } }]
       return {
-        output: `Presentation "${currentDeckName}" created with cover slide. Title: "${title}". Use add_slide_with_content to add more slides.`,
+        output: `Presentation "${currentDeckName}" created with cover slide (theme: ${presetName || deriveThemePreset(title)}). Use add_slide_with_content to add more slides.`,
         mutated: true,
         summary: `Created presentation: ${title}`,
       }
@@ -195,37 +191,74 @@ export async function executeProvaTool(
     case 'add_slide_with_content': {
       const title = String(input.title ?? '').trim()
       if (!title) return { output: 'title is required', summary: 'Error: title required' }
-      const layout = (String(input.layout ?? 'title_content').trim()) as SlideContent['layout']
+      const rawLayout = String(input.layout ?? 'numbered_list').trim()
+      const layout = redirectLayout(rawLayout)
       const eyebrow = String(input.eyebrow ?? '').trim() || undefined
       const intro = String(input.intro ?? '').trim() || undefined
       const subtitle = String(input.subtitle ?? '').trim() || undefined
       const content = Array.isArray(input.content) ? input.content : []
-      const imageQuery = String(input.image_query ?? '').trim() || undefined
+      let imageQuery = String(input.image_query ?? '').trim() || undefined
       const imageSide = input.image_side === 'left' ? 'left' : 'right'
 
-      let parsedContent: SlideContent['content']
-      if (layout === 'cards' || layout === 'rows') {
-        parsedContent = content.map(c => {
-          if (typeof c === 'object' && c !== null && 'title' in (c as any)) return c as { title: string; desc?: string }
-          return { title: String(c), desc: '' }
-        })
-      } else if (layout === 'stats') {
-        parsedContent = content.map(c => {
-          if (typeof c === 'object' && c !== null && 'big' in (c as any)) return c as { big: string; desc: string }
-          return { big: String(c), desc: '' }
-        })
-      } else {
-        parsedContent = content.map(c => String(c))
+      // business_case: content = satu dict payload (toleran: [dict], dict, string JSON)
+      let bc: BusinessCasePayload | undefined
+      if (layout === 'business_case') {
+        let rc: unknown = content
+        if (Array.isArray(rc) && rc.length) rc = rc[0]
+        if (typeof rc === 'string' && rc.trim().startsWith('{')) {
+          try { rc = JSON.parse(rc) } catch { /* keep string */ }
+        }
+        if (!rc || typeof rc !== 'object' || Array.isArray(rc)) {
+          return {
+            output:
+              'Error: layout business_case membutuhkan content satu dict: [{variant:"full|solution|metrics",badge,key_message,background,business_problem,solution[],table_title,table:{headers,rows},benefits[],metrics[],challenge,impact}] — minimal key_message atau background.',
+            summary: 'Error: business_case payload salah',
+          }
+        }
+        bc = rc as BusinessCasePayload
       }
 
-      let imageUrl: string | undefined
-      // Stats renders full-width (no side photo) — skip the fetch entirely.
-      if (layout !== 'stats') {
-        if (imageQuery) imageUrl = await fetchPixabayImage(imageQuery)
-        else {
-          const fallback = deriveImageQuery(title, layout)
-          if (fallback) imageUrl = await fetchPixabayImage(fallback)
+      let parsedContent: SlideContent['content']
+      if (layout === 'stats') {
+        parsedContent = content.map((c) => {
+          if (c && typeof c === 'object' && 'big' in (c as Record<string, unknown>)) return c as { big: string; desc: string }
+          const o = c as Record<string, unknown>
+          if (o && typeof o === 'object' && (o.title || o.desc)) return { big: String(o.title ?? ''), desc: String(o.desc ?? '') }
+          return { big: String(c), desc: '' }
+        })
+      } else if (layout === 'cards' || layout === 'numbered_list') {
+        parsedContent = content.map((c) => {
+          if (c && typeof c === 'object' && ('title' in (c as Record<string, unknown>) || 'desc' in (c as Record<string, unknown>))) return c as { title: string; desc?: string }
+          return String(c)
+        }) as SlideContent['content']
+      } else {
+        parsedContent = content.map((c) => String(c))
+      }
+
+      // VALIDASI: layout konten harus punya sesuatu yang bisa dirender —
+      // slide hanya-judul+hanya-intro DITOLAK (guardrail ported from fastapi).
+      if (layout !== 'section_header' && layout !== 'closing' && layout !== 'blank' && layout !== 'business_case') {
+        const { n } = contentVolume(parsedContent)
+        if (n === 0) {
+          return {
+            output: `Error: layout '${layout}' tidak punya konten — slide hanya judul/inti DITOLAK. Kirim content nyata: ["poin",...] atau [{title,desc}] atau [{big,desc}].`,
+            summary: 'Error: konten kosong',
+          }
         }
+      }
+      if (layout === 'business_case') {
+        const hasAny = bc && (bc.key_message || bc.background || bc.solution || bc.benefits || bc.metrics || bc.table || bc.challenge || bc.impact)
+        if (!hasAny) return { output: 'Error: business_case payload kosong — isi minimal key_message atau background.', summary: 'Error: business_case kosong' }
+      }
+
+      // Gambar: HANYA diminta eksplisit ATAU slide sepi (<=3 baris pendek) → auto-isi.
+      let imageUrl: string | undefined
+      const wantsImage = layout !== 'stats' && layout !== 'callout' && layout !== 'business_case' && layout !== 'section_header'
+      if (wantsImage) {
+        const vol = contentVolume(parsedContent)
+        const sparse = vol.n <= 3 && vol.chars < 260
+        const query = imageQuery ?? (sparse ? deriveImageQuery(title) : undefined)
+        if (query) imageUrl = await fetchPixabayImage(query)
       }
 
       const slide: SlideContent = {
@@ -238,12 +271,13 @@ export async function executeProvaTool(
         imageUrl,
         imageSide,
         theme: { ...currentTheme },
+        ...(bc ? { bc } : {}),
       }
 
       const slideNum = currentSlides.length + 1
       currentSlides.push(slide)
       return {
-        output: `Slide ${slideNum} added: "${title}" (layout: ${layout}). Total slides: ${currentSlides.length}.${imageUrl ? ` Image: ${imageUrl}` : ''}`,
+        output: `Slide ${slideNum} added: "${title}" (layout: ${layout}${rawLayout !== layout ? `, redirected from ${rawLayout}` : ''}). Total slides: ${currentSlides.length}.${imageUrl ? ` Image: ${imageUrl}` : ''}`,
         mutated: true,
         summary: `Added slide: ${title}`,
       }

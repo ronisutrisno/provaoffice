@@ -1,274 +1,191 @@
+/**
+ * AI slide generation — shared types + house-style color sets.
+ *
+ * Templates were ported from the proxsis-llm-fastapi PPTX generator
+ * (house style: Georgia titles, rounded boxes, banner KEY MESSAGE, uniform
+ * cards, business_case variants). Rendering happens in
+ * `src/main/html-to-pptx-local.ts` (PptxGenJS, native editable elements).
+ * This module only defines the data contract + the three curated color sets.
+ */
+
 export interface SlideTheme {
+  /** brand primary (maroon / navy / green) — titles, footer, dark text on light */
   primary: string
+  /** brand light shade — accents on dark panels */
   secondary: string
+  /** small-caps eyebrow / dots / markers */
   accent: string
+  /** slide background (warm off-white) */
   background: string
   title: string
   text: string
   footerText?: string
+  // ── house-style additions (optional; renderer derives fallbacks) ──
+  /** darkest brand shade: dark cards, cover/divider/closing backgrounds */
+  primaryDark?: string
+  /** mid brand shade: banner accent bar, labels on dark cards */
+  primaryLight?: string
+  /** KEY MESSAGE banner + numbered-list zebra fill */
+  bannerBg?: string
+  zebra?: string
+  /** near-black body ink */
+  ink?: string
+  /** warm gray body/muted text */
+  muted?: string
+}
+
+/** Resolve a house-style theme with derived fallbacks for older payloads. */
+export function houseTheme(th: SlideTheme): Required<Omit<SlideTheme, 'footerText'>> & { footerText: string } {
+  return {
+    primary: th.primary,
+    secondary: th.secondary,
+    accent: th.accent,
+    background: th.background,
+    title: th.title,
+    text: th.text,
+    footerText: th.footerText ?? th.muted ?? th.text,
+    primaryDark: th.primaryDark ?? th.primary,
+    primaryLight: th.primaryLight ?? th.secondary,
+    bannerBg: th.bannerBg ?? th.background,
+    zebra: th.zebra ?? th.bannerBg ?? th.background,
+    ink: th.ink ?? th.title,
+    muted: th.muted ?? th.text,
+  }
 }
 
 export const DEFAULT_THEME: SlideTheme = {
-  primary: '#0D2137',
-  secondary: '#1A73E8',
-  accent: '#00BFA5',
-  background: '#FFFFFF',
-  title: '#0D2137',
-  text: '#333333',
-  footerText: '#999999',
+  primary: '#5C0000',
+  secondary: '#822828',
+  accent: '#822828',
+  background: '#FAF8F7',
+  title: '#1F1A1A',
+  text: '#6E5A5A',
+  footerText: '#6E5A5A',
+  primaryDark: '#3A0000',
+  primaryLight: '#822828',
+  bannerBg: '#F3EFEF',
+  zebra: '#F5F0F0',
+  ink: '#1F1A1A',
+  muted: '#6E5A5A',
 }
 
 /**
- * Curated theme presets — the model picks one by name instead of inventing colors.
- * Every preset is contrast-checked: dark `primary` on light `background` for content
- * slides, white text on `primary` for cover/section/closing (see textOn() in the
- * pptx builder). Never pure black.
+ * Three curated color sets — same house style, different brand hue.
+ * All contrast-checked: white text on primary/primaryDark, dark ink on light bg.
  */
 export const THEME_PRESETS: Record<string, SlideTheme> = {
-  corporate: {
-    primary: '#0D2137',
-    secondary: '#1A73E8',
-    accent: '#00BFA5',
-    background: '#FFFFFF',
-    title: '#0D2137',
-    text: '#333333',
-    footerText: '#999999',
-  },
-  ocean: {
-    primary: '#0B3C5D',
-    secondary: '#328CC1',
-    accent: '#F2A104',
+  maroon: { ...DEFAULT_THEME },
+  navy: {
+    primary: '#0F2B3C',
+    secondary: '#3E7A96',
+    accent: '#2E5A70',
     background: '#F7FAFC',
-    title: '#0B3C5D',
-    text: '#2E3B4E',
-    footerText: '#8A9BA8',
+    title: '#152530',
+    text: '#5C6B75',
+    footerText: '#5C6B75',
+    primaryDark: '#081C28',
+    primaryLight: '#2E5A70',
+    bannerBg: '#EAF0F3',
+    zebra: '#F0F5F7',
+    ink: '#152530',
+    muted: '#5C6B75',
   },
-  forest: {
+  green: {
     primary: '#1B4332',
-    secondary: '#2D6A4F',
-    accent: '#E9C46A',
-    background: '#FFFFFF',
-    title: '#1B4332',
-    text: '#37423D',
-    footerText: '#9AA5A0',
-  },
-  sunset: {
-    primary: '#5D2A42',
-    secondary: '#C75146',
-    accent: '#F4A259',
-    background: '#FFFDF9',
-    title: '#5D2A42',
-    text: '#4A3B3B',
-    footerText: '#B3A3A3',
-  },
-  slate: {
-    primary: '#2F3E46',
-    secondary: '#52796F',
-    accent: '#E07A5F',
-    background: '#FFFFFF',
-    title: '#2F3E46',
-    text: '#3F4A50',
-    footerText: '#9BA6AC',
+    secondary: '#40916C',
+    accent: '#2D6A4F',
+    background: '#F7FAF8',
+    title: '#1C2620',
+    text: '#5C6E62',
+    footerText: '#5C6E62',
+    primaryDark: '#12301F',
+    primaryLight: '#2D6A4F',
+    bannerBg: '#EAF2EC',
+    zebra: '#F0F6F1',
+    ink: '#1C2620',
+    muted: '#5C6E62',
   },
 }
 
 export const THEME_PRESET_NAMES = Object.keys(THEME_PRESETS)
+
+// ── Content contract ─────────────────────────────────────────────────────
+
+/** business_case payload — mirrors the fastapi generator's dict schema. */
+export interface BusinessCasePayload {
+  /** 'full' (default) | 'solution' | 'metrics' */
+  variant?: 'full' | 'solution' | 'metrics'
+  badge?: string
+  key_message?: string
+  background?: string
+  business_problem?: string
+  solution?: string[] | string
+  table_title?: string
+  table?: { headers: string[]; rows: string[][] }
+  /** variant=solution: up to 3 benefit cards */
+  benefits?: Array<{ title: string; desc?: string }>
+  /** variant=metrics: up to 3 big numbers */
+  metrics?: Array<{ big: string; desc?: string }>
+  challenge?: string
+  impact?: string
+}
 
 export interface SlideContent {
   title: string
   subtitle?: string
   eyebrow?: string
   intro?: string
-  content: string[] | Array<{ title: string; desc?: string }> | Array<{ big: string; desc: string }>
+  content?: string[] | Array<{ title: string; desc?: string }> | Array<{ big: string; desc: string }>
+  /**
+   * House-style layouts: numbered_list, cards, stats, callout, agenda,
+   * business_case, section_header, closing, blank.
+   * Legacy keys (title_content/two_column/rows/timeline/quote/big_number/
+   * comparison) are still accepted and redirected by the renderer/tools.
+   */
   layout:
     | 'title'
-    | 'title_content'
-    | 'two_column'
+    | 'numbered_list'
     | 'cards'
-    | 'rows'
     | 'stats'
+    | 'callout'
+    | 'agenda'
+    | 'business_case'
     | 'section_header'
     | 'closing'
-    | 'agenda'
+    | 'blank'
+    // legacy (redirected)
+    | 'title_content'
+    | 'two_column'
+    | 'rows'
     | 'timeline'
     | 'quote'
     | 'big_number'
     | 'comparison'
-    | 'blank'
+    | 'section_header_legacy'
   imageUrl?: string
   /** which side the photo sits on; undefined = right (legacy default) */
   imageSide?: 'left' | 'right'
   theme?: Partial<SlideTheme>
+  /** business_case payload (layout='business_case') */
+  bc?: BusinessCasePayload
 }
 
-const W = 1280
-const H = 720
-
-function t(theme: SlideTheme, override?: Partial<SlideTheme>): SlideTheme {
-  return { ...theme, ...override }
-}
-
-function wrapSlide(body: string, theme: SlideTheme): string {
-  return `<div style="width:${W}px;height:${H}px;background:${theme.background};font-family:'Segoe UI',system-ui,-apple-system,sans-serif;color:${theme.text};overflow:hidden;position:relative;">${body}</div>`
-}
-
-function footerBar(text: string, theme: SlideTheme): string {
-  return `<div style="position:absolute;bottom:0;left:0;right:0;height:32px;background:${theme.primary};display:flex;align-items:center;padding:0 40px;font-size:11px;color:${theme.footerText ?? '#aaa'};">${text}</div>`
-}
-
-function eyebrowHtml(text: string, theme: SlideTheme): string {
-  return `<div style="font-size:12px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:${theme.accent};margin-bottom:8px;">${text}</div>`
-}
-
-function titleHtml(title: string, size = 40, color?: string, theme?: SlideTheme): string {
-  return `<h1 style="margin:0;font-size:${size}px;font-weight:700;line-height:1.2;color:${color ?? theme?.title ?? '#0D2137'};">${title}</h1>`
-}
-
-function bulletsHtml(items: string[], theme: SlideTheme): string {
-  return `<ul style="margin:0;padding:0 0 0 20px;list-style:none;">${items.map(i => `<li style="position:relative;padding:6px 0 6px 18px;font-size:16px;line-height:1.5;color:${theme.text};"><span style="position:absolute;left:0;top:10px;width:6px;height:6px;background:${theme.accent};border-radius:50%;"></span>${i}</li>`).join('')}</ul>`
-}
-
-function cardsHtml(items: Array<{ title: string; desc?: string }>, theme: SlideTheme): string {
-  const w = Math.floor((W - 80 - 20 * (items.length - 1)) / items.length)
-  return `<div style="display:flex;gap:20px;padding:0 40px;">${items.map((it, i) => `<div style="flex:1;background:${theme.primary}08;border:1px solid ${theme.primary}15;border-radius:12px;padding:24px 20px;">
-    <div style="width:8px;height:8px;background:${theme.accent};border-radius:50%;margin-bottom:12px;"></div>
-    <div style="font-size:16px;font-weight:700;color:${theme.primary};margin-bottom:8px;">${it.title}</div>
-    ${it.desc ? `<div style="font-size:13px;line-height:1.5;color:${theme.text};">${it.desc}</div>` : ''}
-  </div>`).join('')}</div>`
-}
-
-function rowsHtml(items: Array<{ title: string; desc?: string }>, theme: SlideTheme): string {
-  return `<div style="padding:0 40px;">${items.map(it => `<div style="display:flex;align-items:flex-start;gap:12px;padding:10px 0;border-bottom:1px solid ${theme.primary}10;">
-    <div style="width:8px;height:8px;background:${theme.accent};border-radius:50%;margin-top:6px;flex-shrink:0;"></div>
-    <div><div style="font-size:15px;font-weight:600;color:${theme.primary};">${it.title}</div>
-    ${it.desc ? `<div style="font-size:13px;color:${theme.text};margin-top:2px;">${it.desc}</div>` : ''}
-    </div>
-  </div>`).join('')}</div>`
-}
-
-function statsHtml(items: Array<{ big: string; desc: string }>, theme: SlideTheme): string {
-  const w = Math.floor((W - 80 - 20 * (items.length - 1)) / items.length)
-  return `<div style="display:flex;gap:20px;padding:0 40px;">${items.map(it => `<div style="flex:1;text-align:center;padding:24px 16px;">
-    <div style="font-size:42px;font-weight:800;color:${theme.secondary};line-height:1;">${it.big}</div>
-    <div style="font-size:13px;color:${theme.text};margin-top:10px;line-height:1.3;">${it.desc}</div>
-  </div>`).join('')}</div>`
-}
-
-function twoColumnHtml(left: string, right: string, theme: SlideTheme): string {
-  return `<div style="display:flex;gap:40px;padding:0 40px;">
-    <div style="flex:1;font-size:15px;line-height:1.6;color:${theme.text};">${left}</div>
-    <div style="flex:1;font-size:15px;line-height:1.6;color:${theme.text};">${right}</div>
-  </div>`
-}
-
-function imageHtml(url: string, w: number, h: number): string {
-  return `<img src="${url}" style="width:${w}px;height:${h}px;object-fit:cover;border-radius:8px;" onerror="this.style.display='none'" />`
-}
-
-export function generateCoverSlide(title: string, subtitle: string, theme: SlideTheme): string {
-  return wrapSlide(`
-    <div style="position:absolute;inset:0;background:linear-gradient(135deg,${theme.primary} 0%,${theme.secondary} 100%);display:flex;flex-direction:column;justify-content:center;padding:80px;">
-      <div style="font-size:13px;font-weight:600;letter-spacing:3px;text-transform:uppercase;color:${theme.accent};margin-bottom:20px;">PRESENTATION</div>
-      <h1 style="margin:0;font-size:48px;font-weight:800;color:#FFFFFF;line-height:1.15;">${title}</h1>
-      ${subtitle ? `<div style="font-size:18px;color:rgba(255,255,255,0.7);margin-top:16px;">${subtitle}</div>` : ''}
-      <div style="margin-top:auto;width:60px;height:4px;background:${theme.accent};border-radius:2px;"></div>
-    </div>`, theme)
-}
-
-export function generateContentSlide(slide: SlideContent, slideNum: number, theme: SlideTheme): string {
-  const th = t(theme, slide.theme)
-  let body = ''
-
-  if (slide.eyebrow) body += eyebrowHtml(slide.eyebrow, th)
-
-  if (slide.layout === 'title_content' || slide.layout === 'title') {
-    body += titleHtml(slide.title, 36, undefined, th)
-    if (slide.intro) body += `<p style="font-size:14px;color:${th.text};margin:12px 0 20px;line-height:1.5;">${slide.intro}</p>`
-    if (Array.isArray(slide.content) && slide.content.length > 0) {
-      if (typeof slide.content[0] === 'string') {
-        body += `<div style="padding:0 40px;">${bulletsHtml(slide.content as string[], th)}</div>`
-      }
-    }
-  } else if (slide.layout === 'cards') {
-    body += titleHtml(slide.title, 32, undefined, th)
-    if (slide.intro) body += `<p style="font-size:14px;color:${th.text};margin:12px 0 20px;">${slide.intro}</p>`
-    if (Array.isArray(slide.content) && typeof slide.content[0] === 'object' && 'title' in (slide.content[0] as any)) {
-      body += cardsHtml(slide.content as Array<{ title: string; desc?: string }>, th)
-    }
-  } else if (slide.layout === 'rows') {
-    body += titleHtml(slide.title, 32, undefined, th)
-    if (Array.isArray(slide.content) && typeof slide.content[0] === 'object' && 'title' in (slide.content[0] as any)) {
-      body += `<div style="margin-top:16px;">${rowsHtml(slide.content as Array<{ title: string; desc?: string }>, th)}</div>`
-    }
-  } else if (slide.layout === 'stats') {
-    body += titleHtml(slide.title, 32, undefined, th)
-    if (Array.isArray(slide.content) && typeof slide.content[0] === 'object' && 'big' in (slide.content[0] as any)) {
-      body += `<div style="margin-top:24px;">${statsHtml(slide.content as Array<{ big: string; desc: string }>, th)}</div>`
-    }
-  } else if (slide.layout === 'two_column') {
-    body += titleHtml(slide.title, 32, undefined, th)
-    if (Array.isArray(slide.content) && slide.content.length >= 2) {
-      const left = typeof slide.content[0] === 'string' ? slide.content[0] : JSON.stringify(slide.content[0])
-      const right = typeof slide.content[1] === 'string' ? slide.content[1] : JSON.stringify(slide.content[1])
-      body += `<div style="margin-top:16px;">${twoColumnHtml(left, right, th)}</div>`
-    }
-  } else if (slide.layout === 'section_header') {
-    body = `<div style="position:absolute;inset:0;background:${th.primary};display:flex;flex-direction:column;justify-content:center;padding:80px;">
-      ${slide.eyebrow ? `<div style="font-size:13px;font-weight:600;letter-spacing:3px;text-transform:uppercase;color:${th.accent};margin-bottom:16px;">${slide.eyebrow}</div>` : ''}
-      <h1 style="margin:0;font-size:44px;font-weight:800;color:#FFFFFF;line-height:1.15;">${slide.title}</h1>
-      ${slide.intro ? `<div style="font-size:16px;color:rgba(255,255,255,0.7);margin-top:16px;">${slide.intro}</div>` : ''}
-      <div style="margin-top:24px;width:60px;height:4px;background:${th.accent};border-radius:2px;"></div>
-    </div>`
-    return wrapSlide(body, th)
-  } else if (slide.layout === 'closing') {
-    body = `<div style="position:absolute;inset:0;background:linear-gradient(135deg,${th.primary} 0%,${th.secondary} 100%);display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;padding:80px;">
-      <h1 style="margin:0;font-size:48px;font-weight:800;color:#FFFFFF;">${slide.title || 'Terima Kasih'}</h1>
-      ${slide.subtitle ? `<div style="font-size:18px;color:rgba(255,255,255,0.7);margin-top:16px;">${slide.subtitle}</div>` : ''}
-      <div style="margin-top:24px;width:60px;height:4px;background:${th.accent};border-radius:2px;"></div>
-    </div>`
-    return wrapSlide(body, th)
-  } else if (slide.layout === 'agenda') {
-    body += titleHtml(slide.title, 32, undefined, th)
-    if (Array.isArray(slide.content) && typeof slide.content[0] === 'string') {
-      body += `<div style="margin-top:16px;padding:0 40px;">${(slide.content as string[]).map((item, i) => `
-        <div style="display:flex;align-items:center;gap:16px;padding:12px 0;border-bottom:1px solid ${th.primary}10;">
-          <div style="width:32px;height:32px;background:${th.secondary};border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:14px;font-weight:700;">${i + 1}</div>
-          <div style="font-size:16px;color:${th.text};">${item}</div>
-        </div>`).join('')}</div>`
-    }
+/** Map legacy layout names to their house-style successors (silent redirect). */
+export function redirectLayout(layout: string): SlideContent['layout'] {
+  switch (layout) {
+    case 'title_content':
+    case 'two_column':
+    case 'rows':
+    case 'timeline':
+    case 'comparison':
+      return 'numbered_list'
+    case 'quote':
+      return 'callout'
+    case 'big_number':
+      return 'stats'
+    case 'section_header_legacy':
+      return 'section_header'
+    default:
+      return layout as SlideContent['layout']
   }
-
-  const bodyWithPad = `<div style="padding:40px 0 40px;">${body}</div>`
-  const imageBlock = slide.imageUrl
-    ? `<div style="flex:0 0 400px;display:flex;align-items:center;">${imageHtml(slide.imageUrl, 400, 300)}</div>`
-    : ''
-  const withImage = slide.imageUrl
-    ? slide.imageSide === 'left'
-      ? `<div style="display:flex;gap:24px;padding:0 40px;">${imageBlock}<div style="flex:1;">${bodyWithPad}</div></div>`
-      : `<div style="display:flex;gap:24px;padding:0 40px;"><div style="flex:1;">${bodyWithPad}</div>${imageBlock}</div>`
-    : bodyWithPad
-
-  return wrapSlide(`
-    <div style="padding:32px 0 0;">
-      ${withImage}
-    </div>
-    ${footerBar(`Slide ${slideNum}`, th)}
-  `, th)
-}
-
-export function generateAgendaSlide(title: string, items: string[], theme: SlideTheme): string {
-  return generateContentSlide({
-    title,
-    content: items,
-    layout: 'agenda',
-  }, 0, theme)
-}
-
-export function generateClosingSlide(title: string, subtitle: string, theme: SlideTheme): string {
-  return generateContentSlide({
-    title: title || 'Terima Kasih',
-    subtitle,
-    content: [],
-    layout: 'closing',
-  }, 0, theme)
 }

@@ -1,5 +1,11 @@
 import PptxGenJS from 'pptxgenjs'
-import type { SlideContent, SlideTheme } from '../renderer/ai/slide-templates'
+import {
+  DEFAULT_THEME,
+  houseTheme,
+  redirectLayout,
+  type BusinessCasePayload,
+  type SlideContent,
+} from '../renderer/ai/slide-templates'
 
 export const PROVA_JSON_PREFIX = 'prova-json:'
 
@@ -17,15 +23,6 @@ export function decodeSlideMarker(marker: string): SlideContent | null {
   }
 }
 
-const DEFAULT_THEME: SlideTheme = {
-  primary: '0D2137',
-  secondary: '1A73E8',
-  accent: '00BFA5',
-  background: 'FFFFFF',
-  title: '0D2137',
-  text: '333333',
-}
-
 function hex(c?: string): string {
   return (c ?? '000000').replace(/^#/, '')
 }
@@ -37,22 +34,6 @@ function textOn(hexColor: string): string {
   const b = parseInt(hexColor.slice(4, 6), 16)
   const lum = (0.299 * r + 0.587 * g + 0.114 * b) / 255
   return lum > 0.6 ? '333333' : 'FFFFFF'
-}
-
-/**
- * Text color for elements sitting on a TINT of `base` (fill = base @ ~92% transparency
- * over a light slide). The tint is always light, so the text must be dark — regardless
- * of whether the theme's primary itself is light. Falls back to the theme text color
- * only when that is already dark enough to contrast with the tint.
- */
-function textOnTint(base: string, themeText: string): string {
-  const dark = '2B3440'
-  // Use the theme's text color when it is dark (normal case); otherwise force dark.
-  const r = parseInt(themeText.slice(0, 2), 16)
-  const g = parseInt(themeText.slice(2, 4), 16)
-  const b = parseInt(themeText.slice(4, 6), 16)
-  const lum = (0.299 * r + 0.587 * g + 0.114 * b) / 255
-  return lum < 0.45 ? themeText : dark
 }
 
 /** Decode common HTML entities the model sometimes emits (e.g. "&amp;" in titles). */
@@ -76,10 +57,10 @@ function decodeEntities(s: string): string {
  * GENERATION time because PowerPoint does not apply <a:normAutofit> when a file
  * is opened (only when the box is edited), so fit:'shrink' alone renders as
  * overflowing wrapped text in real PowerPoint. Also guarantees the longest
- * single word fits one line (prevents "Biay a mod al" mid-word breaks).
+ * single word fits one line.
  */
 function fitPt(text: string, wIn: number, hIn: number, maxPt: number, minPt = 9): number {
-  const CHAR_W = 0.56 // avg glyph width as a fraction of point size (Segoe UI / Carlito)
+  const CHAR_W = 0.56 // avg glyph width as a fraction of point size (Georgia)
   const LINE_H = 1.25
   const paragraphs = String(text ?? '').split('\n')
   const maxWord = Math.max(
@@ -101,26 +82,28 @@ function fitPt(text: string, wIn: number, hIn: number, maxPt: number, minPt = 9)
 }
 
 /**
- * Parse a line of text into PptxGenJS runs, honoring inline **bold** markers the
- * model writes. Unmatched markers are stripped so they never render literally.
+ * Font floor + truncation: instead of shrinking long text to micro size, cap it
+ * at `minPt` and cut to the number of lines that actually fit (ellipsis).
+ * Mirrors the fastapi generator's desc-truncation behavior.
  */
-function parseRuns(line: string, baseColor: string): Array<{ text: string; options: { bold?: boolean; color: string } }> {
-  const runs: Array<{ text: string; options: { bold?: boolean; color: string } }> = []
-  const re = /\*\*([^*\n]+)\*\*/g
-  let last = 0
-  for (const m of line.matchAll(re)) {
-    const i = m.index ?? 0
-    if (i > last) runs.push({ text: line.slice(last, i), options: { color: baseColor } })
-    runs.push({ text: m[1] ?? '', options: { bold: true, color: baseColor } })
-    last = i + m[0].length
-  }
-  if (last < line.length) runs.push({ text: line.slice(last), options: { color: baseColor } })
-  if (runs.length === 0) runs.push({ text: line, options: { color: baseColor } })
-  return runs
+function clampFit(
+  text: string,
+  wIn: number,
+  hIn: number,
+  maxPt = 12,
+  minPt = 11,
+): { text: string; pt: number } {
+  const pt = fitPt(text, wIn, hIn, maxPt, minPt)
+  if (pt > minPt) return { text, pt }
+  const cpl = Math.max(10, Math.floor((wIn * 72) / (0.56 * minPt)))
+  const maxLines = Math.max(1, Math.floor((hIn * 72) / (minPt * 1.25)))
+  const maxChars = cpl * maxLines
+  let t = text
+  if (t.length > maxChars) t = `${t.slice(0, Math.max(0, maxChars - 1)).trimEnd()}…`
+  return { text: t, pt: minPt }
 }
 
-/** Download an image to a data: URL. Uses Node fetch (follows redirects, has a timeout)
- *  instead of PptxGenJS's https.get, which silently fails on some CDN redirects. */
+/** Download an image to a data: URL (Node fetch follows CDN redirects; PptxGenJS's does not). */
 async function downloadImageToDataUrl(url: string): Promise<string | undefined> {
   try {
     const resp = await fetch(url, { signal: AbortSignal.timeout(15000) })
@@ -133,26 +116,34 @@ async function downloadImageToDataUrl(url: string): Promise<string | undefined> 
   }
 }
 
-import { getSlideBackground } from './slide-backgrounds'
-
 export interface SlideToPptxResult {
   bytes: Uint8Array
   /** Images that could not be downloaded/embedded (page index + url). */
   imageFailures: { page: number; url: string }[]
 }
 
-export async function slideContentToPptxBytes(slides: SlideContent[], startNumber = 1): Promise<SlideToPptxResult> {
+// ── House-style geometry (ported from proxsis-llm-fastapi pptx_tools.py) ──
+// Slide 13.33 x 7.5 in; margin 0.6; content width 12.13.
+const W = 13.33
+const MX = 0.6
+const CW = W - 2 * MX
+const FOOTER_Y = 7.02
+
+const SHRINK = { fit: 'shrink' as const }
+
+export async function slideContentToPptxBytes(
+  slides: SlideContent[],
+  startNumber = 1,
+): Promise<SlideToPptxResult> {
   const pptx = new PptxGenJS()
-  pptx.defineLayout({ name: 'WIDE', width: 13.33, height: 7.5 })
+  pptx.defineLayout({ name: 'WIDE', width: W, height: 7.5 })
   pptx.layout = 'WIDE'
   const imageFailures: { page: number; url: string }[] = []
-  // One deck, one font: Segoe UI everywhere (matches the HTML preview template).
-  const FONT = { fontFace: 'Segoe UI' }
+  // One deck, one font: Georgia everywhere (titles AND body) — house style.
+  const FONT = { fontFace: 'Georgia' }
 
   for (let si = 0; si < slides.length; si++) {
     const raw = slides[si]!
-    // The model sometimes emits HTML entities (&amp; etc.) — decode them so they
-    // don't render literally in PowerPoint.
     const slide: SlideContent = {
       ...raw,
       title: decodeEntities(raw.title),
@@ -163,287 +154,588 @@ export async function slideContentToPptxBytes(slides: SlideContent[], startNumbe
         if (typeof c === 'string') return decodeEntities(c)
         if (c && typeof c === 'object') {
           const o = { ...(c as Record<string, unknown>) }
-          for (const k of ['title', 'desc', 'big']) if (typeof o[k] === 'string') o[k] = decodeEntities(o[k] as string)
+          for (const k of ['title', 'desc', 'big'])
+            if (typeof o[k] === 'string') o[k] = decodeEntities(o[k] as string)
           return o
         }
         return c
       }) as SlideContent['content'],
     }
-    const slideNumber = startNumber + si
-    const th = { ...DEFAULT_THEME, ...(slide.theme ?? {}) }
-    const primary = hex(th.primary)
-    const secondary = hex(th.secondary)
-    const accent = hex(th.accent)
-    const bg = hex(th.background)
-    const text = hex(th.text)
+    const layout = redirectLayout(slide.layout)
+    const th = houseTheme({ ...DEFAULT_THEME, ...(slide.theme ?? {}) })
+    const P = hex(th.primary)
+    const PL = hex(th.primaryLight)
+    const PD = hex(th.primaryDark)
+    const BG = hex(th.background)
+    const INK = hex(th.ink)
+    const MUT = hex(th.muted)
+    const ACC = hex(th.accent)
+    const BANNER = hex(th.bannerBg)
+    const ZEBRA = hex(th.zebra)
+    const WHITE = 'FFFFFF'
+    // Bar/dot color cycle (mirrors _COMPONENT_PALETTE)
+    const PAL = [P, PL, ACC, hex(th.secondary)]
+    const pal = (i: number) => PAL[i % PAL.length]
 
     const s = pptx.addSlide()
-    s.background = { color: bg }
+    s.background = { color: BG }
+    const slideNumber = startNumber + si
 
-    const isDark = slide.layout === 'section_header' || slide.layout === 'closing' || slide.layout === 'title'
-    const titleColor = isDark ? 'FFFFFF' : primary
-    const bodyColor = isDark ? 'FFFFFF' : text
-
-    // Hybrid decorative background: gradient/texture rendered from HTML/CSS per
-    // theme preset (things PptxGenJS primitives cannot express), embedded as the
-    // bottom layer. Text and cards stay native/editable on top of it.
-    const bgPng = await getSlideBackground(th, isDark ? 'dark' : 'light')
-    if (bgPng) {
-      s.addImage({ data: `data:image/png;base64,${bgPng}`, x: 0, y: 0, w: 13.33, h: 7.5 })
-    }
-
-    // Resolve the slide photo to a data URL once (used by cover and content slides).
     const imageData = slide.imageUrl ? await downloadImageToDataUrl(slide.imageUrl) : undefined
     if (slide.imageUrl && !imageData) imageFailures.push({ page: si, url: slide.imageUrl })
 
-    if (slide.layout === 'title') {
-      if (imageData) {
-        s.addImage({ data: imageData, x: 0, y: 0, w: 13.33, h: 7.5, sizing: { type: 'cover', w: 13.33, h: 7.5 } })
-        s.addShape('rect', { x: 0, y: 0, w: 13.33, h: 7.5, fill: { color: primary, transparency: 35 } })
+    const addText = (
+      text: string,
+      opts: Parameters<typeof s.addText>[1],
+    ) => s.addText(text, { ...FONT, ...SHRINK, ...opts })
+
+    // ══════════ COVER (title) — maroon + photo panel kanan 38% ══════════
+    if (layout === 'title') {
+      s.background = { color: P }
+      const hasPhoto = !!imageData
+      const textW = hasPhoto ? W * 0.62 - 1.7 : W - 1.8
+      if (hasPhoto) {
+        const pw = W * 0.38
+        s.addImage({
+          data: imageData!,
+          x: W - pw,
+          y: 0,
+          w: pw,
+          h: 7.5,
+          sizing: { type: 'cover', w: pw, h: 7.5 },
+        })
+        s.addShape('rect', { x: W - pw - 0.03, y: 0, w: 0.06, h: 7.5, fill: { color: PL } })
       }
-      if (slide.eyebrow)
-        s.addText(slide.eyebrow.toUpperCase(), { x: 0.7, y: 1.2, w: 11, h: 0.4, fontSize: 16, color: accent, bold: true, charSpacing: 4, ...FONT })
-      s.addText(slide.title, { x: 0.7, y: 1.8, w: 11.9, h: 1.4, fontSize: fitPt(slide.title, 11.9, 1.4, 48, 20), color: 'FFFFFF', bold: true, ...FONT })
+      addText((slide.eyebrow || 'PRESENTASI').toUpperCase(), {
+        x: 0.9, y: 1.15, w: 6, h: 0.4, fontSize: 13, color: 'D9D9D9', bold: true, charSpacing: 3,
+        fit: 'none',
+      })
+      s.addShape('rect', { x: 0.9, y: 1.72, w: 1.5, h: 0.06, fill: { color: 'D9D9D9' } })
+      addText(slide.title, {
+        x: 0.9, y: 2.45, w: textW, h: 2.5, fontSize: fitPt(slide.title, textW, 2.5, 44, 18),
+        color: WHITE, bold: true, valign: 'middle', lineSpacingMultiple: 1.1,
+      })
       if (slide.subtitle)
-        s.addText(slide.subtitle, { x: 0.7, y: 3.3, w: 11, h: 0.8, fontSize: fitPt(slide.subtitle, 11, 0.8, 24, 12), color: 'CCCCCC', ...FONT })
+        addText(slide.subtitle, {
+          x: 0.9, y: 5.2, w: textW, h: 0.95,
+          fontSize: fitPt(slide.subtitle, textW, 0.95, 17, 10), color: 'D9CFCF',
+          lineSpacingMultiple: 1.25,
+        })
       continue
     }
 
-    if (slide.layout === 'closing') {
-      s.background = { color: primary }
-      s.addText(slide.title || 'Terima Kasih', { x: 0.7, y: 2.8, w: 11.9, h: 1.4, fontSize: fitPt(slide.title || 'Terima Kasih', 11.9, 1.4, 52, 20), color: 'FFFFFF', bold: true, align: 'center', ...FONT })
-      if (slide.subtitle)
-        s.addText(slide.subtitle, { x: 0.7, y: 4.3, w: 11, h: 0.8, fontSize: fitPt(slide.subtitle, 11, 0.8, 24, 12), color: 'CCCCCC', align: 'center', ...FONT })
-      s.addText(String(slideNumber), { x: 12.5, y: 6.95, w: 0.6, h: 0.4, fontSize: 12, color: textOn(primary), align: 'right', ...FONT })
-      continue
-    }
-
-    if (slide.layout === 'section_header') {
-      s.background = { color: primary }
+    // ══════════ SECTION DIVIDER — maroon + photo panel sisi (imageSide) ══════════
+    if (layout === 'section_header') {
+      s.background = { color: P }
+      const hasPhoto = !!imageData
+      const left = slide.imageSide !== 'left' ? false : true // default photo kanan
+      const pw = hasPhoto ? W * 0.42 : 0
+      if (hasPhoto) {
+        const px = left ? 0 : W - pw
+        s.addImage({
+          data: imageData!,
+          x: px,
+          y: 0,
+          w: pw,
+          h: 7.5,
+          sizing: { type: 'cover', w: pw, h: 7.5 },
+        })
+      }
+      const tx = hasPhoto && !left ? 0.9 : hasPhoto && left ? pw + 0.6 : MX
+      const tw = hasPhoto ? W - pw - tx - 0.6 : CW
+      addText('SECTION', {
+        x: tx, y: 1.2, w: Math.min(tw, 4), h: 0.4, fontSize: 13, color: 'D9D9D9', bold: true,
+        charSpacing: 3, fit: 'none',
+      })
+      s.addShape('rect', { x: tx, y: 1.75, w: 1.5, h: 0.06, fill: { color: 'D9D9D9' } })
       if (slide.eyebrow)
-        s.addText(slide.eyebrow.toUpperCase(), { x: 0.7, y: 1.6, w: 11, h: 0.4, fontSize: 16, color: accent, bold: true, charSpacing: 4, ...FONT })
-      s.addText(slide.title, { x: 0.7, y: 2.2, w: 11.9, h: 1.4, fontSize: fitPt(slide.title, 11.9, 1.4, 48, 20), color: 'FFFFFF', bold: true, ...FONT })
-      if (slide.intro)
-        s.addText(slide.intro, { x: 0.7, y: 3.8, w: 11, h: 0.8, fontSize: fitPt(slide.intro, 11, 0.8, 22, 12), color: 'CCCCCC', ...FONT })
-      s.addText(String(slideNumber), { x: 12.5, y: 6.95, w: 0.6, h: 0.4, fontSize: 12, color: textOn(primary), align: 'right', ...FONT })
+        addText(slide.eyebrow, {
+          x: tx, y: 2.35, w: tw, h: 1.1, fontSize: fitPt(slide.eyebrow, tw, 1.1, 60, 24),
+          color: WHITE, bold: true,
+        })
+      addText(slide.title, {
+        x: tx, y: 3.7, w: tw, h: 2.2, fontSize: fitPt(slide.title, tw, 2.2, 40, 18),
+        color: WHITE, bold: true, lineSpacingMultiple: 1.1,
+      })
       continue
     }
 
-    // Content slides
-    // Reserve space for the photo only when it ACTUALLY downloaded (imageData) —
-    // a failed download must not leave a half-empty slide. Stats deserves the full
-    // width: 4 columns beside a photo squeeze descriptions to unreadable sizes.
-    const hasImage = !!imageData && slide.layout !== 'stats'
-    const imageLeft = slide.imageSide === 'left'
-    // Content sits on the opposite side of the photo: left when the image is on
-    // the right (legacy), right when the image is on the left.
-    const contentX = hasImage && imageLeft ? 5.4 : 0.7
-    const contentW = hasImage ? 7.2 : 11.9
-    // fit:'shrink' auto-shrinks text on overflow so the initial layout is clean and
-    // the QC pass does not need to re-tidy every slide.
-    const SHRINK = { fit: 'shrink' as const }
-    let y = 0.5
-    if (slide.eyebrow) {
-      s.addText(slide.eyebrow.toUpperCase(), { x: contentX, y, w: contentW, h: 0.4, fontSize: 14, color: accent, bold: true, charSpacing: 3, ...SHRINK, ...FONT })
-      y += 0.45
+    // ══════════ CLOSING ══════════
+    if (layout === 'closing') {
+      s.background = { color: PD }
+      s.addShape('rect', { x: W / 2 - 1.0, y: 2.2, w: 2.0, h: 0.06, fill: { color: 'D9D9D9' } })
+      addText(slide.title || 'Terima Kasih', {
+        x: MX, y: 2.55, w: CW, h: 2.35, fontSize: fitPt(slide.title || 'Terima Kasih', CW, 2.35, 40, 18),
+        color: WHITE, bold: true, align: 'center', valign: 'middle', lineSpacingMultiple: 1.1,
+      })
+      if (slide.subtitle)
+        addText(slide.subtitle, {
+          x: MX + 1.5, y: 5.15, w: CW - 3, h: 0.9,
+          fontSize: fitPt(slide.subtitle, CW - 3, 0.9, 17, 10), color: 'D9CFCF', align: 'center',
+          lineSpacingMultiple: 1.25,
+        })
+      continue
     }
-    s.addText(slide.title, { x: contentX, y, w: contentW, h: 0.8, fontSize: fitPt(slide.title, contentW, 0.8, 34, 16), color: titleColor, bold: true, ...SHRINK, ...FONT })
-    y += 0.9
-    let introPt = 18
-    if (slide.intro) {
-      // Taller intro box (1.0") so long intros don't shrink below the bullet size;
-      // introPt also clamps the bullets below so the hierarchy never inverts.
-      introPt = fitPt(slide.intro, contentW, 1.0, 18, 10)
-      s.addText(slide.intro, { x: contentX, y, w: contentW, h: 1.0, fontSize: introPt, color: bodyColor, ...SHRINK, ...FONT })
-      y += 1.1
-    }
-    // Breathing room between the header block and the content below (cards/bullets
-    // sat too tight against the intro/title per user feedback).
-    y += 0.25
 
-    const content = slide.content
-    if (slide.layout === 'cards' && Array.isArray(content) && typeof content[0] === 'object' && 'title' in (content[0] as any)) {
-      const cards = content as Array<{ title: string; desc?: string }>
-      const cw = hasImage ? 2.2 : 3.9
-      const gap = 0.15
-      const startX = contentX
-      cards.forEach((card, i) => {
-        const x = startX + i * (cw + gap)
-        // Card without a description shrinks to a compact chip instead of a big empty box.
-        const ch = card.desc ? 3.6 : 1.5
-        s.addShape('rect', { x, y, w: cw, h: ch, fill: { color: primary, transparency: 92 }, line: { color: primary, transparency: 85, width: 1 }, rectRadius: 0.08 })
-        // Card title must contrast with the light card tint — never inherit a light primary.
-        s.addText(card.title, { x: x + 0.25, y: y + 0.25, w: cw - 0.5, h: 1.1, fontSize: fitPt(card.title, cw - 0.5, 1.1, hasImage ? 17 : 21, 10), color: textOnTint(primary, text), bold: true, valign: 'top', ...SHRINK, ...FONT })
-        if (card.desc)
-          s.addText(card.desc, { x: x + 0.25, y: y + 1.45, w: cw - 0.5, h: 2.0, fontSize: fitPt(card.desc, cw - 0.5, 2.0, hasImage ? 12 : 15, 8), color: textOnTint(primary, text), valign: 'top', ...SHRINK, ...FONT })
+    // ══════════ BLANK ══════════
+    if (layout === 'blank') continue
+
+    // ══════════ BUSINESS CASE (3 varian) ══════════
+    if (layout === 'business_case') {
+      const bc: BusinessCasePayload = slide.bc ?? {}
+      const variant = (bc.variant ?? 'full').toLowerCase()
+      // Judul Georgia + badge pill kanan atas
+      const badge = String(bc.badge ?? '').trim()
+      addText(slide.title, {
+        x: MX, y: 0.38, w: badge ? CW - 2.95 : CW, h: 0.8,
+        fontSize: fitPt(slide.title, badge ? CW - 2.95 : CW, 0.8, 26, 14), color: PD, bold: true,
+        valign: 'middle',
       })
-    } else if (slide.layout === 'stats' && Array.isArray(content) && typeof content[0] === 'object' && 'big' in (content[0] as any)) {
-      const stats = content as Array<{ big: string; desc: string }>
-      const cw = contentW / stats.length
-      // One uniform size across all columns (min of what each needs) — per-item
-      // sizing made long labels shrink alone and the row looked uneven. Max 26pt
-      // keeps the "big number" emphasis without a drastic jump from the 15pt desc.
-      const bigPt = Math.min(...stats.map((st) => fitPt(st.big, cw - 0.2, 1.2, 26, 13)))
-      const descPt = Math.min(...stats.map((st) => fitPt(st.desc, cw - 0.2, 1.2, 15, 8)))
-      stats.forEach((st, i) => {
-        const x = contentX + i * cw
-        s.addText(st.big, { x, y, w: cw - 0.2, h: 1.2, fontSize: bigPt, color: secondary, bold: true, align: 'center', ...SHRINK, ...FONT })
-        s.addText(st.desc, { x, y: y + 1.3, w: cw - 0.2, h: 1.2, fontSize: descPt, color: text, align: 'center', ...SHRINK, ...FONT })
-      })
-    } else if (slide.layout === 'rows' && Array.isArray(content) && typeof content[0] === 'object' && 'title' in (content[0] as any)) {
-      const rows = content as Array<{ title: string; desc?: string }>
-      // Dynamic row pitch: fit all rows between y and the footer (7.0) regardless of count.
-      const availH = 7.0 - y
-      const rowH = Math.min(0.95, availH / Math.max(rows.length, 1))
-      rows.forEach((row, i) => {
-        const ry = y + i * rowH
-        const hasDesc = !!row.desc
-        // Title-only rows use the FULL row height (centered) — the old 50/50 split
-        // made them tiny and left a big empty gap under each line.
-        const titleH = hasDesc ? rowH * 0.5 : rowH
-        const dotY = hasDesc ? ry + 0.12 : ry + rowH / 2 - 0.075
-        s.addShape('ellipse', { x: contentX, y: dotY, w: 0.15, h: 0.15, fill: { color: accent } })
-        s.addText(row.title, { x: contentX + 0.3, y: ry, w: contentW - 0.3, h: titleH, fontSize: fitPt(row.title, contentW - 0.3, titleH, 18, 12), color: primary, bold: true, valign: hasDesc ? 'top' : 'middle', ...SHRINK, ...FONT })
-        if (row.desc)
-          s.addText(row.desc, { x: contentX + 0.3, y: ry + rowH * 0.5, w: contentW - 0.3, h: rowH * 0.5, fontSize: fitPt(row.desc, contentW - 0.3, rowH * 0.5, 14, 9), color: text, ...SHRINK, ...FONT })
-      })
-    } else if (slide.layout === 'agenda' && Array.isArray(content) && typeof content[0] === 'string') {
-      ;(content as string[]).forEach((item, i) => {
-        // Dynamic spacing so many agenda items never run past the footer.
-        const availH = 7.0 - y
-        const rowH = Math.min(0.95, availH / Math.max((content as string[]).length, 1))
-        const ry = y + i * rowH
-        s.addShape('ellipse', { x: contentX, y: ry + 0.05, w: 0.5, h: 0.5, fill: { color: secondary } })
-        s.addText(String(i + 1), { x: contentX, y: ry + 0.05, w: 0.5, h: 0.5, fontSize: 16, color: 'FFFFFF', bold: true, align: 'center', valign: 'middle', ...SHRINK, ...FONT })
-        s.addText(item, { x: contentX + 0.8, y: ry + 0.05, w: contentW - 0.8, h: 0.5, fontSize: fitPt(item, contentW - 0.8, 0.5, 18, 10), color: text, valign: 'middle', ...SHRINK, ...FONT })
-      })
-    } else if (slide.layout === 'two_column' && Array.isArray(content) && typeof content[0] === 'string') {
-      // Column text may contain literal "• "/"- " bullet lines and **bold** headers
-      // (the model writes them). Convert bullets to real bullet paragraphs with
-      // hanging indent, and **bold** to bold runs, so styling is consistent.
-      // PptxGenJS takes a FLAT run list: each line's runs carry the line's bullet
-      // option on its first run, and the line's last run sets breakLine.
-      const toRuns = (col: string): Array<{ text: string; options: Record<string, unknown> }> => {
-        const out: Array<{ text: string; options: Record<string, unknown> }> = []
-        const lines = col.split('\n').map((l) => l.trim()).filter(Boolean)
-        lines.forEach((l, li) => {
-          const m = /^[•·▪◦‣⁃-]\s+(.*)$/.exec(l)
-          const body = m ? (m[1] ?? '') : l
-          const runs = parseRuns(body, text)
-          runs.forEach((r, ri) => {
-            const options: Record<string, unknown> = { ...r.options }
-            if (m && ri === 0) options.bullet = { code: '2022', indent: 14 }
-            if (ri === runs.length - 1) {
-              options.breakLine = true
-              if (li < lines.length - 1) options.paraSpaceAfter = 6
-            }
-            out.push({ text: r.text, options })
+      if (badge) {
+        s.addShape('roundRect', {
+          x: MX + CW - 2.7, y: 0.55, w: 2.7, h: 0.44, fill: { color: P }, rectRadius: 0.22,
+          line: { type: 'none' },
+        })
+        addText(badge.toUpperCase(), {
+          x: MX + CW - 2.7, y: 0.55, w: 2.7, h: 0.44, fontSize: 10, color: WHITE, bold: true,
+          align: 'center', valign: 'middle', lineSpacingMultiple: 0.95,
+        })
+      }
+      // Banner KEY MESSAGE
+      const by = 1.35
+      s.addShape('roundRect', { x: MX, y: by, w: CW, h: 0.82, fill: { color: BANNER }, rectRadius: 0.04, line: { type: 'none' } })
+      s.addShape('rect', { x: MX, y: by, w: 0.09, h: 0.82, fill: { color: PL } })
+      addText('KEY MESSAGE', { x: MX + 0.3, y: by + 0.26, w: 1.75, h: 0.3, fontSize: 11, color: P, bold: true, fit: 'none' })
+      if (String(bc.key_message ?? '').trim())
+        addText(String(bc.key_message).trim(), {
+          x: MX + 2.1, y: by + 0.04, w: CW - 2.4, h: 0.74,
+          fontSize: fitPt(String(bc.key_message), CW - 2.4, 0.74, 13, 9), color: PD, bold: true,
+          valign: 'middle', lineSpacingMultiple: 1.25,
+        })
+
+      if (variant === 'solution') {
+        // Kartu SOLUSI full-width gelap + 3 benefit putih
+        const sy = 2.35
+        const shh = 1.95
+        s.addShape('roundRect', { x: MX, y: sy, w: CW, h: shh, fill: { color: PD }, rectRadius: 0.04, line: { type: 'none' } })
+        addText('SOLUSI', { x: MX + 0.3, y: sy + 0.16, w: CW - 0.6, h: 0.28, fontSize: 11, color: WHITE, bold: true, fit: 'none' })
+        const paras = (Array.isArray(bc.solution) ? bc.solution : [String(bc.solution ?? '')])
+          .map((p) => String(p).trim()).filter(Boolean).slice(0, 3)
+        const segH = paras.length ? (shh - 0.55) / paras.length : 0
+        paras.forEach((p, i) => {
+          const fit = clampFit(p, CW - 0.6, segH - 0.04)
+          addText(fit.text, {
+            x: MX + 0.3, y: sy + 0.5 + i * segH, w: CW - 0.6, h: segH - 0.04,
+            fontSize: fit.pt, color: 'F0EAEA', lineSpacingMultiple: 1.3,
           })
         })
-        return out
+        const benefits = (bc.benefits ?? []).slice(0, 3)
+        if (benefits.length) {
+          const by2 = 4.5
+          const bh = 2.15
+          const gap = 0.23
+          const bw = (CW - gap * (benefits.length - 1)) / benefits.length
+          benefits.forEach((b, i) => {
+            const x = MX + i * (bw + gap)
+            renderCard(s, x, by2, bw, bh, pal(i), b.title ?? '', b.desc ?? '', { P, PL, INK, MUT, WHITE, FONT })
+          })
+        }
+        drawFooter(s, slide, slideNumber, { PD, MUT, WHITE, FONT })
+        continue
       }
-      const [left, right] = content as string[]
-      const colW = contentW / 2 - 0.2
-      s.addText(toRuns(left), { x: contentX, y, w: colW, h: 4.2, fontSize: fitPt(left, colW, 4.2, 16, 9), color: text, valign: 'top', ...SHRINK, ...FONT })
-      s.addText(toRuns(right ?? ''), { x: contentX + contentW / 2 + 0.2, y, w: colW, h: 4.2, fontSize: fitPt(right ?? '', colW, 4.2, 16, 9), color: text, valign: 'top', ...SHRINK, ...FONT })
-    } else if (slide.layout === 'timeline' && Array.isArray(content) && typeof content[0] === 'object' && 'title' in (content[0] as any)) {
-      // Horizontal timeline: dots on a line, alternating labels above/below.
-      const steps = content as Array<{ title: string; desc?: string }>
-      const lineY = y + 2.0
-      const stepW = contentW / Math.max(steps.length, 1)
-      s.addShape('rect', { x: contentX + stepW / 2, y: lineY, w: contentW - stepW, h: 0.03, fill: { color: secondary } })
-      steps.forEach((st, i) => {
-        const cx = contentX + stepW * i + stepW / 2
-        s.addShape('ellipse', { x: cx - 0.09, y: lineY - 0.075, w: 0.18, h: 0.18, fill: { color: accent } })
-        const above = i % 2 === 0
-        const ty = above ? lineY - 1.55 : lineY + 0.35
-        s.addText(st.title, { x: cx - stepW / 2 + 0.1, y: ty, w: stepW - 0.2, h: 0.5, fontSize: fitPt(st.title, stepW - 0.2, 0.5, 15, 9), color: primary, bold: true, align: 'center', ...SHRINK, ...FONT })
-        if (st.desc)
-          s.addText(st.desc, { x: cx - stepW / 2 + 0.1, y: ty + 0.5, w: stepW - 0.2, h: 1.0, fontSize: fitPt(st.desc, stepW - 0.2, 1.0, 12, 8), color: text, align: 'center', valign: 'top', ...SHRINK, ...FONT })
-      })
-    } else if (slide.layout === 'quote' && typeof content[0] === 'string') {
-      // Full-width pull quote. The decorative quotation glyph sits in its own
-      // narrow column left of the quote text — sized to its line so the audit
-      // sees no overflow, and horizontally separated so nothing overlaps.
-      const quote = content[0] ?? ''
-      s.addText('“', { x: contentX, y: y, w: 1.1, h: 1.5, fontSize: 72, color: accent, bold: true, valign: 'top', ...FONT })
-      s.addText(quote, { x: contentX + 1.3, y: y, w: contentW - 1.5, h: 2.9, fontSize: fitPt(quote, contentW - 1.5, 2.9, 26, 12), color: primary, italic: true, valign: 'top', ...SHRINK, ...FONT })
-      if (slide.intro)
-        s.addText(slide.intro, { x: contentX + 1.3, y: y + 3.1, w: contentW - 1.5, h: 0.6, fontSize: fitPt(slide.intro, contentW - 1.5, 0.6, 15, 9), color: text, ...SHRINK, ...FONT })
-    } else if (slide.layout === 'big_number' && typeof content[0] === 'string') {
-      // One hero number + caption; the intro line acts as the supporting statement.
-      s.addText(content[0] ?? '', { x: contentX, y: y + 0.4, w: contentW, h: 2.2, fontSize: fitPt(content[0] ?? '', contentW, 2.2, 110, 40), color: secondary, bold: true, align: 'center', ...SHRINK, ...FONT })
-      if (slide.intro)
-        s.addText(slide.intro, { x: contentX + 1.2, y: y + 2.9, w: contentW - 2.4, h: 1.0, fontSize: fitPt(slide.intro, contentW - 2.4, 1.0, 20, 10), color: text, align: 'center', valign: 'top', ...SHRINK, ...FONT })
-    } else if (slide.layout === 'comparison' && Array.isArray(content) && typeof content[0] === 'object' && 'title' in (content[0] as any)) {
-      // Two side-by-side panels (e.g. before/after, problem/solution).
-      const panels = content as Array<{ title: string; desc?: string }>
-      const pw = (contentW - 0.3) / 2
-      panels.slice(0, 2).forEach((p, i) => {
-        const x = contentX + i * (pw + 0.3)
-        s.addShape('rect', { x, y, w: pw, h: 3.7, fill: { color: primary, transparency: i === 0 ? 94 : 88 }, line: { color: primary, transparency: 80, width: 1 }, rectRadius: 0.08 })
-        // Panel text must contrast with the light panel tint — never inherit a light primary.
-        s.addText(p.title, { x: x + 0.3, y: y + 0.3, w: pw - 0.6, h: 0.6, fontSize: fitPt(p.title, pw - 0.6, 0.6, 20, 10), color: textOnTint(primary, text), bold: true, ...SHRINK, ...FONT })
-        if (p.desc)
-          s.addText(p.desc, { x: x + 0.3, y: y + 1.0, w: pw - 0.6, h: 2.5, fontSize: fitPt(p.desc, pw - 0.6, 2.5, 15, 8), color: textOnTint(primary, text), valign: 'top', ...SHRINK, ...FONT })
-      })
-    } else {
-      // Fallback bullets. Items may arrive as objects ({title,desc} / {big,desc})
-      // when the model mixes layouts — stringify them as "Title — desc" (title
-      // bolded via ** markers) instead of rendering "[object Object]".
-      const bullets = (Array.isArray(content) ? content : [])
-        .map((c) => {
-          if (typeof c === 'string') return c
-          if (c && typeof c === 'object') {
-            const o = c as Record<string, unknown>
-            const t = typeof o.title === 'string' ? o.title.trim() : ''
-            const d = typeof o.desc === 'string' ? o.desc.trim() : ''
-            const b = typeof o.big === 'string' ? o.big.trim() : ''
-            const head = t || b
-            if (head && d) return `**${head}** — ${d}`
-            return head || d || ''
-          }
-          return String(c ?? '')
+
+      if (variant === 'metrics') {
+        // Baris 3 big-number + kartu TANTANGAN vs DAMPAK
+        const metrics = (bc.metrics ?? []).slice(0, 3)
+        const my = 2.35
+        const mh = 1.35
+        if (metrics.length) {
+          const gap = 0.23
+          const mw = (CW - gap * (metrics.length - 1)) / metrics.length
+          metrics.forEach((m, i) => {
+            const x = MX + i * (mw + gap)
+            s.addShape('roundRect', { x, y: my, w: mw, h: mh, fill: { color: WHITE }, rectRadius: 0.06, line: { type: 'none' } })
+            s.addShape('rect', { x, y: my, w: 0.1, h: mh, fill: { color: pal(i) } })
+            addText(String(m.big ?? ''), {
+              x: x + 0.3, y: my + 0.12, w: mw - 0.5, h: 0.55,
+              fontSize: fitPt(String(m.big ?? ''), mw - 0.5, 0.55, 26, 12), color: P, bold: true,
+            })
+            addText(String(m.desc ?? ''), {
+              x: x + 0.3, y: my + 0.72, w: mw - 0.5, h: mh - 0.85,
+              fontSize: fitPt(String(m.desc ?? ''), mw - 0.5, mh - 0.85, 11, 8), color: MUT,
+              lineSpacingMultiple: 1.25,
+            })
+          })
+        }
+        const cy = 3.95
+        const chh = 2.7
+        const cwid = (CW - 0.23) / 2
+        s.addShape('roundRect', { x: MX, y: cy, w: cwid, h: chh, fill: { color: WHITE }, rectRadius: 0.04, line: { type: 'none' } })
+        addText('TANTANGAN', { x: MX + 0.3, y: cy + 0.18, w: cwid - 0.6, h: 0.28, fontSize: 11, color: P, bold: true, fit: 'none' })
+        {
+          const fit = clampFit(String(bc.challenge ?? ''), cwid - 0.6, chh - 0.7)
+          addText(fit.text, {
+            x: MX + 0.3, y: cy + 0.5, w: cwid - 0.6, h: chh - 0.7,
+            fontSize: fit.pt, color: MUT, lineSpacingMultiple: 1.35,
+          })
+        }
+        const rx = MX + cwid + 0.23
+        s.addShape('roundRect', { x: rx, y: cy, w: cwid, h: chh, fill: { color: PD }, rectRadius: 0.04, line: { type: 'none' } })
+        addText('DAMPAK', { x: rx + 0.3, y: cy + 0.18, w: cwid - 0.6, h: 0.28, fontSize: 11, color: WHITE, bold: true, fit: 'none' })
+        {
+          const fit = clampFit(String(bc.impact ?? ''), cwid - 0.6, chh - 0.7)
+          addText(fit.text, {
+            x: rx + 0.3, y: cy + 0.5, w: cwid - 0.6, h: chh - 0.7,
+            fontSize: fit.pt, color: 'F0EAEA', lineSpacingMultiple: 1.35,
+          })
+        }
+        drawFooter(s, slide, slideNumber, { PD, MUT, WHITE, FONT })
+        continue
+      }
+
+      // variant full: 2 kartu + tabel (kartu memanjang bila tanpa tabel)
+      const tbl = bc.table
+      const hasTable = !!(tbl?.headers?.length && tbl?.rows?.length)
+      const cy = 2.4
+      const chh = hasTable ? 2.18 : 4.5
+      const cwid = (CW - 0.23) / 2
+      s.addShape('roundRect', { x: MX, y: cy, w: cwid, h: chh, fill: { color: WHITE }, rectRadius: 0.04, line: { type: 'none' } })
+      addText('BACKGROUND', { x: MX + 0.3, y: cy + 0.18, w: cwid - 0.6, h: 0.28, fontSize: 11, color: P, bold: true, fit: 'none' })
+      const bgText = String(bc.background ?? '').trim()
+      const probText = String(bc.business_problem ?? '').trim()
+      if (probText) {
+        const bgH = hasTable ? 0.82 : 1.7
+        const probLblY = cy + 0.48 + bgH + 0.1
+        const bgFit = clampFit(bgText, cwid - 0.6, bgH)
+        addText(bgFit.text, {
+          x: MX + 0.3, y: cy + 0.48, w: cwid - 0.6, h: bgH,
+          fontSize: bgFit.pt, color: MUT, lineSpacingMultiple: 1.3,
         })
-        .filter((s) => s.trim().length > 0)
-      // Split embedded newlines into real paragraphs: one bullet per logical line.
-      // (A \n inside an item used to render as a bare line break with no bullet,
-      // producing the mixed bulleted/unbulleted mess.) Literal "• " prefixes are
-      // stripped so they never double up with the real bullet.
-      const lines = bullets
-        .flatMap((b) => b.split('\n').map((l) => l.trim()).filter(Boolean))
-        .map((l) => {
-          const m = /^[•·▪◦‣⁃]\s+(.*)$/.exec(l)
-          return m ? (m[1] ?? '') : l
+        addText('BUSINESS PROBLEM', { x: MX + 0.3, y: probLblY, w: cwid - 0.6, h: 0.28, fontSize: 11, color: PL, bold: true, fit: 'none' })
+        const probH = cy + chh - probLblY - 0.46
+        const probFit = clampFit(probText, cwid - 0.6, probH)
+        addText(probFit.text, {
+          x: MX + 0.3, y: probLblY + 0.28, w: cwid - 0.6, h: probH,
+          fontSize: probFit.pt, color: MUT, lineSpacingMultiple: 1.3,
         })
-      const runs: Array<{ text: string; options: Record<string, unknown> }> = []
-      lines.forEach((line, li) => {
-        const parsed = parseRuns(line, bodyColor)
-        parsed.forEach((r, ri) => {
-          const options: Record<string, unknown> = { ...r.options }
-          if (ri === 0) options.bullet = { code: '2022', indent: 14 }
-          if (ri === parsed.length - 1) {
-            options.breakLine = true
-            if (li < lines.length - 1) options.paraSpaceAfter = 9
-          }
-          runs.push({ text: r.text, options })
+      } else {
+        const bgFit = clampFit(bgText, cwid - 0.6, chh - 0.68)
+        addText(bgFit.text, {
+          x: MX + 0.3, y: cy + 0.48, w: cwid - 0.6, h: chh - 0.68,
+          fontSize: bgFit.pt, color: MUT, lineSpacingMultiple: 1.35,
         })
-      })
-      // Bullet body 15pt max, clamped to the intro size so it never outgrows it.
-      s.addText(runs, { x: contentX, y, w: contentW, h: 3.8, fontSize: Math.min(fitPt(lines.join('\n'), contentW, 3.8, 15, 9), introPt), color: bodyColor, valign: 'top', ...SHRINK, ...FONT })
+      }
+      const rx = MX + cwid + 0.23
+      s.addShape('roundRect', { x: rx, y: cy, w: cwid, h: chh, fill: { color: PD }, rectRadius: 0.04, line: { type: 'none' } })
+      addText('PROPOSED SOLUTION', { x: rx + 0.3, y: cy + 0.18, w: cwid - 0.6, h: 0.28, fontSize: 11, color: WHITE, bold: true, fit: 'none' })
+      const solParas = (Array.isArray(bc.solution) ? bc.solution : [String(bc.solution ?? '')])
+        .map((p) => String(p).trim()).filter(Boolean).slice(0, 4)
+      if (solParas.length) {
+        const sy = cy + 0.5
+        const segH = (chh - 0.66) / solParas.length
+        solParas.forEach((p, i) => {
+          const fit = clampFit(p, cwid - 0.6, segH - 0.04)
+          addText(fit.text, {
+            x: rx + 0.3, y: sy + i * segH, w: cwid - 0.6, h: segH - 0.04,
+            fontSize: fit.pt, color: 'F0EAEA', lineSpacingMultiple: 1.3,
+          })
+        })
+      }
+      if (hasTable) {
+        const tt = String(bc.table_title ?? '').trim()
+        let ty = 4.72
+        if (tt) {
+          addText(tt.toUpperCase(), { x: MX, y: ty, w: CW, h: 0.3, fontSize: 11, color: P, bold: true, fit: 'none' })
+          ty += 0.34
+        }
+        const headers = tbl!.headers.map(String)
+        const rows = (tbl!.rows ?? []).slice(0, 5).map((r) => r.map(String))
+        const ncols = headers.length
+        const colW = [CW * 0.2, ...Array(Math.max(ncols - 2, 1)).fill((CW * 0.68) / Math.max(ncols - 2, 1)), CW * 0.12]
+        s.addTable(
+          [
+            headers.map((h, ci) => ({
+              text: h,
+              options: {
+                bold: true, color: WHITE, fill: { color: PD }, fontFace: 'Georgia', fontSize: 11,
+                valign: 'middle' as const, align: ci === ncols - 1 ? ('center' as const) : ('left' as const),
+              },
+            })),
+            ...rows.map((r, ri) =>
+              Array.from({ length: ncols }, (_, ci) => ({
+                text: r[ci] ?? '',
+                options: {
+                  bold: ci === 0 || ci === ncols - 1,
+                  color: ci === 0 ? INK : ci === ncols - 1 ? P : MUT,
+                  fill: { color: ri % 2 === 0 ? WHITE : ZEBRA },
+                  fontFace: 'Georgia', fontSize: 10.5, valign: 'middle' as const,
+                  align: ci === ncols - 1 ? ('center' as const) : ('left' as const),
+                },
+              })),
+            ),
+          ],
+          { x: MX, y: ty, w: CW, colW, border: { type: 'none' as const }, rowH: 0.34 },
+        )
+      }
+      drawFooter(s, slide, slideNumber, { PD, MUT, WHITE, FONT })
+      continue
     }
 
-    // Footer
-    s.addShape('rect', { x: 0, y: 7.1, w: 13.33, h: 0.4, fill: { color: primary } })
-    s.addText(String(slideNumber), { x: 12.4, y: 7.1, w: 0.7, h: 0.4, fontSize: 11, color: textOn(primary), align: 'right', valign: 'middle', ...FONT })
+    // ══════════ CONTENT SLIDES ══════════
+    // Gambar hanya bila benar-benar terunduh dan konten tidak penuh.
+    const hasImage = !!imageData && layout !== 'stats' && layout !== 'callout'
+    const imageLeft = slide.imageSide === 'left'
+    const contentX = hasImage && imageLeft ? 5.4 : MX
+    const contentW = hasImage ? CW - 4.6 : CW
 
-    // Optional image (Pixabay) — right side by default, or left when imageSide='left'
-    if (imageData && hasImage) {
-      const imgX = slide.imageSide === 'left' ? 0.7 : 8.2
-      s.addImage({ data: imageData, x: imgX, y: 1.2, w: 4.4, h: 5.4, sizing: { type: 'cover', w: 4.4, h: 5.4 } })
+    let y = 0.55
+    if (slide.eyebrow) {
+      addText(slide.eyebrow.toUpperCase(), {
+        x: contentX, y, w: contentW, h: 0.35, fontSize: 12, color: ACC, bold: true, charSpacing: 2,
+        fit: 'none',
+      })
+      y += 0.42
+    }
+    addText(slide.title, {
+      x: contentX, y, w: contentW, h: 0.85, fontSize: fitPt(slide.title, contentW, 0.85, 28, 16),
+      color: INK, bold: true,
+    })
+    y += 0.95
+    // Intro → banner KEY MESSAGE house-style (rounded + bar aksen)
+    if (slide.intro?.trim()) {
+      s.addShape('roundRect', { x: contentX, y, w: contentW, h: 0.75, fill: { color: BANNER }, rectRadius: 0.04, line: { type: 'none' } })
+      s.addShape('rect', { x: contentX, y, w: 0.09, h: 0.75, fill: { color: PL } })
+      addText(slide.intro.trim(), {
+        x: contentX + 0.3, y: y + 0.04, w: contentW - 0.55, h: 0.67,
+        fontSize: fitPt(slide.intro, contentW - 0.55, 0.67, 14, 9), color: INK, bold: true,
+        valign: 'middle', lineSpacingMultiple: 1.2,
+      })
+      y += 0.9
+    }
+    y += 0.15
+
+    const content = slide.content ?? []
+
+    if (layout === 'callout') {
+      const quote =
+        typeof content[0] === 'string'
+          ? (content[0] as string)
+          : ((content[0] as { title?: string })?.title ?? '')
+      const qy = Math.max(y, 1.9)
+      const qh = 3.4
+      s.addShape('roundRect', { x: contentX, y: qy, w: contentW, h: qh, fill: { color: P }, rectRadius: 0.06, line: { type: 'none' } })
+      s.addShape('rect', { x: contentX, y: qy, w: 0.12, h: qh, fill: { color: PL } })
+      addText(`\u201C${quote}\u201D`, {
+        x: contentX + 0.5, y: qy + 0.4, w: contentW - 1, h: qh - 1.3,
+        fontSize: fitPt(quote, contentW - 1, qh - 1.3, 24, 12), color: WHITE, italic: true,
+        lineSpacingMultiple: 1.3,
+      })
+      if (slide.intro?.trim())
+        addText(`\u2014 ${slide.intro.trim()}`, {
+          x: contentX + 0.5, y: qy + qh - 0.65, w: contentW - 1, h: 0.4, fontSize: 13, color: 'D9CFCF',
+          bold: true, fit: 'none',
+        })
+      drawFooter(s, slide, slideNumber, { PD, MUT, WHITE, FONT })
+      continue
+    }
+
+    if (layout === 'agenda' && typeof content[0] === 'string') {
+      const items = content as string[]
+      const availH = FOOTER_Y - y
+      const gap = 0.12
+      const ih = Math.min(0.85, (availH - (items.length - 1) * gap) / Math.max(items.length, 1))
+      items.forEach((item, i) => {
+        const ry = y + i * (ih + gap)
+        s.addShape('roundRect', { x: contentX, y: ry, w: 0.55, h: ih, fill: { color: P }, rectRadius: 0.06, line: { type: 'none' } })
+        addText(String(i + 1), {
+          x: contentX, y: ry, w: 0.55, h: ih, fontSize: 18, color: WHITE, bold: true,
+          align: 'center', valign: 'middle',
+        })
+        addText(item, {
+          x: contentX + 0.8, y: ry, w: contentW - 0.8, h: ih,
+          fontSize: fitPt(item, contentW - 0.8, ih, 16, 10), color: INK, valign: 'middle',
+        })
+      })
+      drawFooter(s, slide, slideNumber, { PD, MUT, WHITE, FONT })
+      continue
+    }
+
+    if (layout === 'cards') {
+      const cards = (content as Array<{ title: string; desc?: string }>).slice(0, 3)
+      const availH = FOOTER_Y - y - 0.1
+      const chh = Math.min(3.6, availH)
+      const gap = 0.23
+      const cwid = (contentW - gap * Math.max(cards.length - 1, 0)) / Math.max(cards.length, 1)
+      cards.forEach((c, i) =>
+        renderCard(s, contentX + i * (cwid + gap), y, cwid, chh, pal(i), c.title ?? '', c.desc ?? '', {
+          P, PL, INK, MUT, WHITE, FONT,
+        }),
+      )
+      drawFooter(s, slide, slideNumber, { PD, MUT, WHITE, FONT })
+      continue
+    }
+
+    if (layout === 'stats') {
+      const stats = (content as Array<{ big: string; desc: string }>).slice(0, 4)
+      const availH = FOOTER_Y - y - 0.1
+      const gap = 0.23
+      const n = Math.max(stats.length, 1)
+      const cwid = (contentW - gap * (n - 1)) / n
+      // Kartu SEJAJAR horizontal — tinggi cukup 1.9" (bukan dibagi per kartu!)
+      const chh = Math.min(1.9, availH)
+      // House-style (ported from fastapi _fill_stats): font seragam per slide,
+      // desc PANJANG DIPOTONG (bukan diperkecil tanpa batas) — floor 12pt.
+      const descW = cwid - 0.6
+      const charsPerLine = Math.max(14, Math.floor(descW / 0.075))
+      const maxDescLen = Math.max(...stats.map((st) => (st.desc ?? '').length), 0)
+      const estLines = maxDescLen ? Math.max(1, Math.ceil(maxDescLen / charsPerLine)) : 1
+      const descPt = estLines <= 1 ? 15 : estLines <= 2 ? 14 : 13
+      const maxChars = charsPerLine * 3
+      stats.forEach((st, i) => {
+        const x = contentX + i * (cwid + gap)
+        s.addShape('roundRect', { x, y, w: cwid, h: chh, fill: { color: WHITE }, rectRadius: 0.06, line: { type: 'none' } })
+        s.addShape('rect', { x, y, w: 0.12, h: chh, fill: { color: pal(i) } })
+        addText(String(st.big ?? ''), {
+          x: x + 0.3, y: y + 0.15, w: Math.min(2.4, cwid - 0.6), h: 0.66,
+          fontSize: fitPt(String(st.big ?? ''), Math.min(2.4, cwid - 0.6), 0.66, 30, 14), color: P,
+          bold: true,
+        })
+        let d = String(st.desc ?? '')
+        if (d.length > maxChars) d = `${d.slice(0, maxChars - 1).trimEnd()}…`
+        const fit = clampFit(d, descW, chh - 1.0, descPt, 12)
+        addText(fit.text, {
+          x: x + 0.3, y: y + 0.9, w: descW, h: chh - 1.05,
+          fontSize: fit.pt, color: MUT, lineSpacingMultiple: 1.25,
+        })
+      })
+      drawFooter(s, slide, slideNumber, { PD, MUT, WHITE, FONT })
+      continue
+    }
+
+    // numbered_list (juga target redirect title_content/rows/timeline/comparison)
+    {
+      type Row = { title: string; desc: string }
+      const rows: Row[] = (content as Array<string | { title?: string; desc?: string; big?: string }>).map(
+        (c) => {
+          if (typeof c === 'string') return { title: c, desc: '' }
+          return { title: String(c.title ?? c.big ?? ''), desc: String(c.desc ?? '') }
+        },
+      ).filter((r) => r.title || r.desc)
+      const n = Math.max(rows.length, 1)
+      const availH = FOOTER_Y - y - 0.05
+      const gap = 0.12
+      const ih = Math.min(1.3, (availH - (n - 1) * gap) / n)
+      const maxDescLen = Math.max(...rows.map((r) => r.desc.length), 0)
+      const descW = contentW - 1.35
+      const estLines = maxDescLen ? Math.max(1, Math.ceil(maxDescLen / (descW / 0.075))) : 1
+      const descPt = estLines <= 1 ? 16 : estLines <= 2 ? 14 : 13
+      const titlePt = n <= 3 ? 20 : n <= 4 ? 18 : 16
+      rows.forEach((r, i) => {
+        const ry = y + i * (ih + gap)
+        s.addShape('roundRect', { x: contentX, y: ry, w: contentW, h: ih, fill: { color: WHITE }, rectRadius: 0.08, line: { type: 'none' } })
+        s.addShape('rect', { x: contentX, y: ry, w: 0.07, h: ih, fill: { color: pal(i) } })
+        addText(String(i + 1).padStart(2, '0'), {
+          x: contentX + 0.25, y: ry, w: 0.85, h: ih, fontSize: 24, color: P, bold: true,
+          valign: 'middle',
+        })
+        const tx = contentX + 1.2
+        const tw = contentW - (tx - contentX) - 0.25
+        if (r.desc) {
+          addText(r.title, {
+            x: tx, y: ry + 0.02, w: tw, h: ih * 0.42,
+            fontSize: fitPt(r.title, tw, ih * 0.42, titlePt, 10), color: INK, bold: true,
+            valign: 'bottom',
+          })
+          const descFit = clampFit(r.desc, tw, ih * 0.52, descPt, 10)
+          addText(descFit.text, {
+            x: tx, y: ry + ih * 0.46, w: tw, h: ih * 0.52,
+            fontSize: descFit.pt, color: MUT,
+            valign: 'top', lineSpacingMultiple: 1.2,
+          })
+        } else {
+          addText(r.title, {
+            x: tx, y: ry + 0.04, w: tw, h: ih - 0.08,
+            fontSize: fitPt(r.title, tw, ih - 0.08, titlePt, 10), color: INK, valign: 'middle',
+            lineSpacingMultiple: 1.25,
+          })
+        }
+      })
+    }
+
+    // Footer house-style: bar tipis + label + nomor
+    drawFooter(s, slide, slideNumber, { PD, MUT, WHITE, FONT })
+
+    // Gambar konten (numbered_list/cards) — sisi sesuai imageSide
+    if (hasImage) {
+      const imgX = imageLeft ? MX : W - MX - 4.4
+      s.addImage({
+        data: imageData!,
+        x: imgX,
+        y: 1.2,
+        w: 4.4,
+        h: 5.4,
+        sizing: { type: 'cover', w: 4.4, h: 5.4 },
+      })
     }
   }
 
   const buf = await pptx.write({ outputType: 'arraybuffer' })
   return { bytes: new Uint8Array(buf as ArrayBuffer), imageFailures }
+}
+
+/** Kartu house-style: rounded putih + band warna atas + dot + title + desc (seragam, tanpa kartu gelap). */
+function renderCard(
+  s: import('pptxgenjs').default.Slide,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  colorBand: string,
+  title: string,
+  desc: string,
+  C: { P: string; PL: string; INK: string; MUT: string; WHITE: string; FONT: { fontFace: string } },
+): void {
+  const FONT = { fontFace: 'Georgia' }
+  s.addShape('roundRect', { x, y, w, h, fill: { color: C.WHITE }, rectRadius: 0.06, line: { type: 'none' } })
+  s.addShape('roundRect', { x, y, w, h: 0.12, fill: { color: colorBand }, rectRadius: 0.06, line: { type: 'none' } })
+  const hasDot = !!title
+  if (hasDot) {
+    s.addShape('ellipse', { x: x + 0.3, y: y + 0.35, w: 0.5, h: 0.5, fill: { color: colorBand } })
+    s.addText((title[0] ?? '').toUpperCase(), {
+      ...FONT, x: x + 0.3, y: y + 0.35, w: 0.5, h: 0.5, fontSize: 18, color: C.WHITE, bold: true,
+      align: 'center', valign: 'middle', fit: 'none',
+    })
+    s.addText(title, {
+      ...FONT, x: x + 0.95, y: y + 0.4, w: w - 1.2, h: 0.75,
+      fontSize: fitPt(title, w - 1.2, 0.75, 17, 9), color: C.INK, bold: true, valign: 'middle',
+      fit: 'shrink',
+    })
+    if (desc) {
+      const fit = clampFit(desc, w - 0.6, h - 1.3, 12, 10)
+      s.addText(fit.text, {
+        ...FONT, x: x + 0.3, y: y + 1.1, w: w - 0.6, h: h - 1.3,
+        fontSize: fit.pt, color: C.MUT, valign: 'top',
+        lineSpacingMultiple: 1.3, fit: 'shrink',
+      })
+    }
+  } else {
+    s.addText(desc, {
+      ...FONT, x: x + 0.3, y: y + 0.3, w: w - 0.6, h: h - 0.6,
+      fontSize: fitPt(desc, w - 0.6, h - 0.6, 13, 8), color: C.MUT, valign: 'top', fit: 'shrink',
+    })
+  }
+}
+
+/** Footer house-style: bar tipis primaryDark + nomor halaman kanan. */
+function drawFooter(
+  s: import('pptxgenjs').default.Slide,
+  slide: SlideContent,
+  slideNumber: number,
+  C: { PD: string; MUT: string; WHITE: string; FONT: { fontFace: string } },
+): void {
+  s.addShape('rect', { x: 0, y: 7.38, w: 13.33, h: 0.12, fill: { color: C.PD } })
+  s.addText(String(slideNumber), {
+    ...C.FONT, x: 12.4, y: 7.02, w: 0.7, h: 0.3, fontSize: 10, color: C.MUT, align: 'right',
+    valign: 'middle',
+  })
 }
