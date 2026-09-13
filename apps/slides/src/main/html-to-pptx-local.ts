@@ -284,41 +284,51 @@ export async function slideContentToPptxBytes(
     if (layout === 'business_case') {
       const bc: BusinessCasePayload = slide.bc ?? {}
       const variant = (bc.variant ?? 'full').toLowerCase()
-      // Judul Georgia + badge pill kanan atas
-      const badge = String(bc.badge ?? '').trim()
+      // Judul kotak dinamis (default label house-style) — 2026-09-13
+      const lbl = (v: string | undefined, dflt: string): string => String(v ?? '').trim() || dflt
+      const L_BG = lbl(bc.background_label, 'BACKGROUND')
+      const L_PROB = lbl(bc.problem_label, 'BUSINESS PROBLEM')
+      const L_SOL = lbl(bc.solution_label, 'PROPOSED SOLUTION')
+      const L_CHAL = lbl(bc.challenge_label, 'TANTANGAN')
+      const L_IMP = lbl(bc.impact_label, 'DAMPAK')
+      // Eyebrow + judul di slot SAMA seperti slide konten lain (konsisten antar layout).
+      // Badge pill kanan-atas DIHAPUS 2026-09-13 (judul panjang tertutup badge).
+      let hy = 0.55
+      if (slide.eyebrow) {
+        addText(slide.eyebrow.toUpperCase(), {
+          x: MX, y: hy, w: CW, h: 0.35, fontSize: 12, color: ACC, bold: true, charSpacing: 2,
+          fit: 'none',
+        })
+        hy += 0.42
+      }
       addText(slide.title, {
-        x: MX, y: 0.38, w: badge ? CW - 2.95 : CW, h: 0.8,
-        fontSize: fitPt(slide.title, badge ? CW - 2.95 : CW, 0.8, 26, 14), color: PD, bold: true,
+        x: MX, y: hy, w: CW, h: 0.85,
+        fontSize: fitPt(slide.title, CW, 0.85, 26, 14), color: PD, bold: true,
         valign: 'middle',
       })
-      if (badge) {
-        s.addShape('roundRect', {
-          x: MX + CW - 2.7, y: 0.55, w: 2.7, h: 0.44, fill: { color: P }, rectRadius: 0.22,
-          line: { type: 'none' },
-        })
-        addText(badge.toUpperCase(), {
-          x: MX + CW - 2.7, y: 0.55, w: 2.7, h: 0.44, fontSize: 10, color: WHITE, bold: true,
-          align: 'center', valign: 'middle', lineSpacingMultiple: 0.95,
-        })
-      }
-      // Banner KEY MESSAGE
-      const by = 1.35
-      s.addShape('roundRect', { x: MX, y: by, w: CW, h: 0.82, fill: { color: BANNER }, rectRadius: 0.04, line: { type: 'none' } })
-      s.addShape('rect', { x: MX, y: by, w: 0.09, h: 0.82, fill: { color: PL } })
-      addText('KEY MESSAGE', { x: MX + 0.3, y: by + 0.26, w: 1.75, h: 0.3, fontSize: 11, color: P, bold: true, fit: 'none' })
-      if (String(bc.key_message ?? '').trim())
-        addText(String(bc.key_message).trim(), {
-          x: MX + 2.1, y: by + 0.04, w: CW - 2.4, h: 0.74,
-          fontSize: fitPt(String(bc.key_message), CW - 2.4, 0.74, 13, 9), color: PD, bold: true,
+      // Banner KEY MESSAGE — HANYA bila isinya ada (dulu frame selalu digambar
+      // sehingga payload tanpa key_message menghasilkan pita kosong).
+      const km = String(bc.key_message ?? '').trim()
+      const by = 1.78
+      if (km) {
+        s.addShape('roundRect', { x: MX, y: by, w: CW, h: 0.78, fill: { color: BANNER }, rectRadius: 0.04, line: { type: 'none' } })
+        s.addShape('rect', { x: MX, y: by, w: 0.09, h: 0.78, fill: { color: PL } })
+        addText('KEY MESSAGE', { x: MX + 0.3, y: by + 0.24, w: 1.75, h: 0.3, fontSize: 11, color: P, bold: true, fit: 'none' })
+        addText(km, {
+          x: MX + 2.1, y: by + 0.03, w: CW - 2.4, h: 0.72,
+          fontSize: fitPt(km, CW - 2.4, 0.72, 13, 9), color: PD, bold: true,
           valign: 'middle', lineSpacingMultiple: 1.25,
         })
+      }
+      // Batas atas konten varian: slot banner dipakai kembali bila banner tidak ada.
+      const yTop = km ? 2.68 : 1.85
 
       if (variant === 'solution') {
         // Kartu SOLUSI full-width gelap + 3 benefit putih
-        const sy = 2.35
+        const sy = yTop
         const shh = 1.95
         s.addShape('roundRect', { x: MX, y: sy, w: CW, h: shh, fill: { color: PD }, rectRadius: 0.04, line: { type: 'none' } })
-        addText('SOLUSI', { x: MX + 0.3, y: sy + 0.16, w: CW - 0.6, h: 0.28, fontSize: 11, color: WHITE, bold: true, fit: 'none' })
+        addText(L_SOL, { x: MX + 0.3, y: sy + 0.16, w: CW - 0.6, h: 0.28, fontSize: 11, color: WHITE, bold: true, fit: 'none' })
         const paras = (Array.isArray(bc.solution) ? bc.solution : [String(bc.solution ?? '')])
           .map((p) => String(p).trim()).filter(Boolean).slice(0, 3)
         const segH = paras.length ? (shh - 0.55) / paras.length : 0
@@ -331,8 +341,8 @@ export async function slideContentToPptxBytes(
         })
         const benefits = (bc.benefits ?? []).slice(0, 3)
         if (benefits.length) {
-          const by2 = 4.5
-          const bh = 2.15
+          const by2 = sy + shh + 0.2
+          const bh = Math.min(2.15, Math.max(1.2, FOOTER_Y - by2 - 0.12))
           const gap = 0.23
           const bw = (CW - gap * (benefits.length - 1)) / benefits.length
           benefits.forEach((b, i) => {
@@ -347,7 +357,7 @@ export async function slideContentToPptxBytes(
       if (variant === 'metrics') {
         // Baris 3 big-number + kartu TANTANGAN vs DAMPAK
         const metrics = (bc.metrics ?? []).slice(0, 3)
-        const my = 2.35
+        const my = yTop
         const mh = 1.35
         if (metrics.length) {
           const gap = 0.23
@@ -367,11 +377,11 @@ export async function slideContentToPptxBytes(
             })
           })
         }
-        const cy = 3.95
-        const chh = 2.7
+        const cy = my + mh + 0.25
+        const chh = Math.min(2.7, Math.max(1.4, FOOTER_Y - cy - 0.12))
         const cwid = (CW - 0.23) / 2
         s.addShape('roundRect', { x: MX, y: cy, w: cwid, h: chh, fill: { color: WHITE }, rectRadius: 0.04, line: { type: 'none' } })
-        addText('TANTANGAN', { x: MX + 0.3, y: cy + 0.18, w: cwid - 0.6, h: 0.28, fontSize: 11, color: P, bold: true, fit: 'none' })
+        addText(L_CHAL, { x: MX + 0.3, y: cy + 0.18, w: cwid - 0.6, h: 0.28, fontSize: 11, color: P, bold: true, fit: 'none' })
         {
           const fit = clampFit(String(bc.challenge ?? ''), cwid - 0.6, chh - 0.7)
           addText(fit.text, {
@@ -381,7 +391,7 @@ export async function slideContentToPptxBytes(
         }
         const rx = MX + cwid + 0.23
         s.addShape('roundRect', { x: rx, y: cy, w: cwid, h: chh, fill: { color: PD }, rectRadius: 0.04, line: { type: 'none' } })
-        addText('DAMPAK', { x: rx + 0.3, y: cy + 0.18, w: cwid - 0.6, h: 0.28, fontSize: 11, color: WHITE, bold: true, fit: 'none' })
+        addText(L_IMP, { x: rx + 0.3, y: cy + 0.18, w: cwid - 0.6, h: 0.28, fontSize: 11, color: WHITE, bold: true, fit: 'none' })
         {
           const fit = clampFit(String(bc.impact ?? ''), cwid - 0.6, chh - 0.7)
           addText(fit.text, {
@@ -396,11 +406,11 @@ export async function slideContentToPptxBytes(
       // variant full: 2 kartu + tabel (kartu memanjang bila tanpa tabel)
       const tbl = bc.table
       const hasTable = !!(tbl?.headers?.length && tbl?.rows?.length)
-      const cy = 2.4
-      const chh = hasTable ? 2.18 : 4.5
+      const cy = yTop + 0.05
+      const chh = hasTable ? 2.18 : Math.max(2.5, FOOTER_Y - 0.15 - cy)
       const cwid = (CW - 0.23) / 2
       s.addShape('roundRect', { x: MX, y: cy, w: cwid, h: chh, fill: { color: WHITE }, rectRadius: 0.04, line: { type: 'none' } })
-      addText('BACKGROUND', { x: MX + 0.3, y: cy + 0.18, w: cwid - 0.6, h: 0.28, fontSize: 11, color: P, bold: true, fit: 'none' })
+      addText(L_BG, { x: MX + 0.3, y: cy + 0.18, w: cwid - 0.6, h: 0.28, fontSize: 11, color: P, bold: true, fit: 'none' })
       const bgText = String(bc.background ?? '').trim()
       const probText = String(bc.business_problem ?? '').trim()
       if (probText) {
@@ -411,7 +421,7 @@ export async function slideContentToPptxBytes(
           x: MX + 0.3, y: cy + 0.48, w: cwid - 0.6, h: bgH,
           fontSize: bgFit.pt, color: MUT, lineSpacingMultiple: 1.3,
         })
-        addText('BUSINESS PROBLEM', { x: MX + 0.3, y: probLblY, w: cwid - 0.6, h: 0.28, fontSize: 11, color: PL, bold: true, fit: 'none' })
+        addText(L_PROB, { x: MX + 0.3, y: probLblY, w: cwid - 0.6, h: 0.28, fontSize: 11, color: PL, bold: true, fit: 'none' })
         const probH = cy + chh - probLblY - 0.46
         const probFit = clampFit(probText, cwid - 0.6, probH)
         addText(probFit.text, {
@@ -427,7 +437,7 @@ export async function slideContentToPptxBytes(
       }
       const rx = MX + cwid + 0.23
       s.addShape('roundRect', { x: rx, y: cy, w: cwid, h: chh, fill: { color: PD }, rectRadius: 0.04, line: { type: 'none' } })
-      addText('PROPOSED SOLUTION', { x: rx + 0.3, y: cy + 0.18, w: cwid - 0.6, h: 0.28, fontSize: 11, color: WHITE, bold: true, fit: 'none' })
+      addText(L_SOL, { x: rx + 0.3, y: cy + 0.18, w: cwid - 0.6, h: 0.28, fontSize: 11, color: WHITE, bold: true, fit: 'none' })
       const solParas = (Array.isArray(bc.solution) ? bc.solution : [String(bc.solution ?? '')])
         .map((p) => String(p).trim()).filter(Boolean).slice(0, 4)
       if (solParas.length) {
@@ -443,7 +453,7 @@ export async function slideContentToPptxBytes(
       }
       if (hasTable) {
         const tt = String(bc.table_title ?? '').trim()
-        let ty = 4.72
+        let ty = cy + chh + 0.14
         if (tt) {
           addText(tt.toUpperCase(), { x: MX, y: ty, w: CW, h: 0.3, fontSize: 11, color: P, bold: true, fit: 'none' })
           ty += 0.34

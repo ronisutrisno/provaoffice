@@ -115,6 +115,7 @@ export const THEME_PRESET_NAMES = Object.keys(THEME_PRESETS)
 export interface BusinessCasePayload {
   /** 'full' (default) | 'solution' | 'metrics' */
   variant?: 'full' | 'solution' | 'metrics'
+  /** @deprecated badge pill kanan-atas dihapus 2026-09-13; field diterima tapi tidak dirender */
   badge?: string
   key_message?: string
   background?: string
@@ -128,6 +129,17 @@ export interface BusinessCasePayload {
   metrics?: Array<{ big: string; desc?: string }>
   challenge?: string
   impact?: string
+  // ── Judul kotak dinamis (opsional; default label house-style) ──
+  /** default "BACKGROUND" */
+  background_label?: string
+  /** default "BUSINESS PROBLEM" */
+  problem_label?: string
+  /** default "PROPOSED SOLUTION" */
+  solution_label?: string
+  /** default "TANTANGAN" */
+  challenge_label?: string
+  /** default "DAMPAK" */
+  impact_label?: string
 }
 
 export interface SlideContent {
