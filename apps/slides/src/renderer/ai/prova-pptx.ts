@@ -55,7 +55,7 @@ export const PROVA_PPTX_TOOLS: AgentToolDef[] = [
   {
     name: 'add_slide_with_content',
     description:
-      'Add a content slide. House-style layouts (all native & editable, Georgia font): numbered_list (default — rounded rows with big 01/02 numbers + accent bar; content = ["text"] or [{title,desc}], max 5), cards (2-3 uniform white cards with colored band; content=[{title,desc}] max 3), stats (up to 4 big-number cards; content=[{big,desc}]), callout (quote banner; content=["quote text"], intro=attribution), agenda (numbered table of contents; content=["item",...]), business_case (RICHEST layout — banner KEY MESSAGE + contrast cards + optional table; content=[{...payload dict}] with fields variant full|solution|metrics, badge, key_message, background, business_problem, solution[], table_title, table{headers,rows[]}, benefits[], metrics[], challenge, impact), section_header (chapter divider — call between chapters), closing, blank. The old layouts title_content/two_column/rows/timeline/comparison/quote/big_number are accepted but redirected to the new equivalents. Images are NOT required: they are added only when the slide is sparse (<=3 short rows) and there is room — set image_query only for such slides; never force an image. Content density: every slide must carry >= 3 facts; desc items must be informative 10-25 words; a title promising N items must list all N in the content.',
+      'Add a content slide. House-style layouts (all native & editable, Georgia font): numbered_list (default — rounded rows with big 01/02 numbers + accent bar; content = ["text"] or [{title,desc}], max 5), cards (2-3 uniform white cards with colored band; content=[{title,desc}] max 3), stats (up to 4 big-number cards; content=[{big,desc}]), callout (quote banner; content=["quote text"], intro=attribution), agenda (numbered table of contents; content=["item",...]), business_case (RICHEST layout — banner KEY MESSAGE + contrast cards + optional table; content=[{...payload dict}] with fields variant full|solution|metrics, key_message, background, business_problem, solution[], table_title, table{headers,rows[]}, benefits[], metrics[], challenge, impact, background_label, problem_label, solution_label, challenge_label, impact_label), section_header (chapter divider — call between chapters), closing, blank. The old layouts title_content/two_column/rows/timeline/comparison/quote/big_number are accepted but redirected to the new equivalents. Images are NOT required: they are added only when the slide is sparse (<=3 short rows) and there is room — set image_query only for such slides; never force an image. Content density: every slide must carry >= 3 facts; desc items must be informative 10-25 words; a title promising N items must list all N in the content.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -63,7 +63,7 @@ export const PROVA_PPTX_TOOLS: AgentToolDef[] = [
         content: {
           type: 'array',
           description:
-            'Content items. ["bullet"] or [{title,desc}] for numbered_list/cards; [{big,desc}] for stats; ["quote"] for callout; for business_case pass ONE dict payload: [{variant:"full",badge:"...",key_message:"...",background:"...",business_problem:"...",solution:["p1","p2"],table_title:"...",table:{headers:[...],rows:[[...]]}}]',
+            'Content items. ["bullet"] or [{title,desc}] for numbered_list/cards; [{big,desc}] for stats; ["quote"] for callout; for business_case pass ONE dict payload: [{variant:"full",key_message:"...",background:"...",business_problem:"...",solution:["p1","p2"],table_title:"...",table:{headers:[...],rows:[[...]]},background_label:"...",problem_label:"...",solution_label:"..."}]',
           items: { type: 'string' },
         },
         layout: {
@@ -211,7 +211,7 @@ export async function executeProvaTool(
         if (!rc || typeof rc !== 'object' || Array.isArray(rc)) {
           return {
             output:
-              'Error: layout business_case membutuhkan content satu dict: [{variant:"full|solution|metrics",badge,key_message,background,business_problem,solution[],table_title,table:{headers,rows},benefits[],metrics[],challenge,impact}] — minimal key_message atau background.',
+              'Error: layout business_case membutuhkan content satu dict: [{variant:"full|solution|metrics",key_message,background,business_problem,solution[],table_title,table:{headers,rows},benefits[],metrics[],challenge,impact,background_label,problem_label,solution_label,challenge_label,impact_label}] — minimal key_message atau background.',
             summary: 'Error: business_case payload salah',
           }
         }
